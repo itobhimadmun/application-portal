@@ -38,7 +38,6 @@ export default async function SiteFooter() {
             {site.website ? (
               <li><a href={site.website} className="hover:underline" rel="noreferrer">{site.website}</a></li>
             ) : null}
-            <li><Link href="/admin/login" className="hover:underline">{t("nav.admin")}</Link></li>
           </ul>
         </div>
       </div>

@@ -7,8 +7,8 @@ import { IconMenu, IconClose } from "./ui/Icons";
 type Item = { href: string; label: string };
 
 export default function MobileNav({
-  items, adminLabel, menuLabel, closeLabel,
-}: { items: Item[]; adminLabel: string; menuLabel: string; closeLabel: string }) {
+  items, menuLabel, closeLabel,
+}: { items: Item[]; menuLabel: string; closeLabel: string }) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -42,15 +42,6 @@ export default function MobileNav({
                 </Link>
               </li>
             ))}
-            <li>
-              <Link
-                href="/admin/login"
-                onClick={() => setOpen(false)}
-                className="block py-3.5 text-[16px] font-semibold text-royal-600"
-              >
-                {adminLabel}
-              </Link>
-            </li>
           </ul>
         </div>
       ) : null}

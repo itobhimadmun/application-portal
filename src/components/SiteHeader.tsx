@@ -36,9 +36,6 @@ export default async function SiteHeader() {
             <Suspense fallback={<span className="px-2">नेपाली | English</span>}>
               <LanguageSwitcher locale={locale} />
             </Suspense>
-            <Link href="/admin/login" className="hidden font-semibold underline-offset-2 hover:underline sm:inline">
-              {t("nav.admin")}
-            </Link>
           </div>
         </div>
       </div>
@@ -58,7 +55,7 @@ export default async function SiteHeader() {
               {locale === "en" ? site.portalNameEn : site.portalNameNe}
             </p>
           </div>
-          <MobileNav items={nav} adminLabel={t("nav.admin")} menuLabel={t("nav.menu")} closeLabel={t("nav.close")} />
+          <MobileNav items={nav} menuLabel={t("nav.menu")} closeLabel={t("nav.close")} />
         </div>
       </div>
 
