@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { jwtVerify } from "jose";
 import { SESSION_COOKIE } from "@/lib/auth";
 
+// v2: sign-in lives at /member-login; /admin/* requires a full (2FA-complete) session.
 const PROTECTED = /^\/admin(?!\/login)/;
 const SIGN_IN_PATHS = new Set(["/admin/login", "/member-login"]);
 
