@@ -28,6 +28,7 @@ export default async function AdminLoginPage({
         <div className="mt-5">
           <LoginForm
             next={next}
+            locale={locale}
             labels={{ email: t("admin.email"), password: t("admin.password"), submit: t("admin.signIn") }}
           />
         </div>
