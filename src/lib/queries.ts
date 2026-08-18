@@ -21,7 +21,8 @@ export async function getWards(): Promise<Ward[]> {
 
 /* -------------------------------------------------------------------- search */
 
-const SUMMARY_SELECT = sql`
+/** Built lazily so importing this module never touches the database. */
+const summarySelect = () => sql`
   a.id, a.slug, a.title_ne, a.title_en, a.description_ne, a.description_en,
   a.status, a.is_sample, a.all_wards, a.office_ne, a.office_en,
   a.online_form_enabled, a.updated_at,
@@ -33,6 +34,7 @@ const SUMMARY_SELECT = sql`
   COALESCE((SELECT array_agg(w.number ORDER BY w.number) FROM application_wards aw
               JOIN wards w ON w.id = aw.ward_id WHERE aw.application_id = a.id), '{}') AS ward_numbers
 `;
+
 
 /**
  * The heart of the portal. Combines four free, self-hosted techniques:
@@ -96,7 +98,7 @@ export async function searchApplications(
     : sql`0`;
 
   const items = await sql<ApplicationSummary[]>`
-    SELECT ${SUMMARY_SELECT}, ${score}::float AS score
+    SELECT ${summarySelect()}, ${score}::float AS score
       FROM applications a
       LEFT JOIN categories c ON c.id = a.category_id
       LEFT JOIN sections   s ON s.id = a.section_id
@@ -131,7 +133,7 @@ export async function getApplicationBySlug(
   opts: { includeUnpublished?: boolean } = {}
 ): Promise<ApplicationDetail | null> {
   const rows = await sql<ApplicationDetail[]>`
-    SELECT ${SUMMARY_SELECT},
+    SELECT ${summarySelect()},
            a.about_ne, a.about_en, a.fee_ne, a.fee_en, a.duration_ne, a.duration_en,
            a.keywords_ne, a.keywords_en, a.aliases, a.online_form_schema,
            a.view_count, a.created_at, a.published_at
@@ -149,7 +151,7 @@ export async function getApplicationBySlug(
 
 export async function getApplicationById(id: number): Promise<ApplicationDetail | null> {
   const rows = await sql<ApplicationDetail[]>`
-    SELECT ${SUMMARY_SELECT},
+    SELECT ${summarySelect()},
            a.about_ne, a.about_en, a.fee_ne, a.fee_en, a.duration_ne, a.duration_en,
            a.keywords_ne, a.keywords_en, a.aliases, a.online_form_schema,
            a.view_count, a.created_at, a.published_at
@@ -193,7 +195,7 @@ export async function getRelatedApplications(
   app: ApplicationSummary, limit = 4
 ): Promise<ApplicationSummary[]> {
   return sql<ApplicationSummary[]>`
-    SELECT ${SUMMARY_SELECT}
+    SELECT ${summarySelect()}
       FROM applications a
       LEFT JOIN categories c ON c.id = a.category_id
       LEFT JOIN sections   s ON s.id = a.section_id
@@ -205,7 +207,7 @@ export async function getRelatedApplications(
 
 export async function getRecentApplications(limit = 6): Promise<ApplicationSummary[]> {
   return sql<ApplicationSummary[]>`
-    SELECT ${SUMMARY_SELECT}
+    SELECT ${summarySelect()}
       FROM applications a
       LEFT JOIN categories c ON c.id = a.category_id
       LEFT JOIN sections   s ON s.id = a.section_id

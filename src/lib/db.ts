@@ -28,8 +28,28 @@ function create() {
   });
 }
 
-export const sql: ReturnType<typeof postgres> =
-  globalThis.__portalSql ?? (globalThis.__portalSql = create());
+/**
+ * The client is created on FIRST USE, not at module load. A missing
+ * DATABASE_URL therefore fails the request that needs the database rather
+ * than the whole build — important because Next.js evaluates route modules
+ * while collecting page data, and preview environments may have no database.
+ */
+function client(): ReturnType<typeof postgres> {
+  if (!globalThis.__portalSql) globalThis.__portalSql = create();
+  return globalThis.__portalSql;
+}
+
+export const sql: ReturnType<typeof postgres> = new Proxy(
+  function () {} as unknown as ReturnType<typeof postgres>,
+  {
+    apply(_target, _thisArg, args: unknown[]) {
+      return (client() as unknown as (...a: unknown[]) => unknown)(...args);
+    },
+    get(_target, prop) {
+      return (client() as unknown as Record<string | symbol, unknown>)[prop];
+    },
+  }
+);
 
 export async function isDatabaseReady(): Promise<boolean> {
   try {

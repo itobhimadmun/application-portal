@@ -4,12 +4,26 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { sql } from "./db";
-import { authenticate, createSession, destroySession, getSessionUser, hashPassword } from "./auth";
+import {
+  clientIp, createPendingSession, createSession, destroySession, findAdminByEmail,
+  findAdminById, getPendingSession, getSessionUser, hashPassword, isLocked, logAttempt,
+  LOCKOUT_MINUTES, recordFailure, recordSuccess, tooManyAttemptsFromIp, verifyPassword,
+} from "./auth";
+import { formatSecret, generateSecret, otpauthUri, verifyTotp } from "./totp";
+import { site } from "./site";
 import { buildSearchIndex } from "./translit";
 import { slugify } from "./slug";
 import { storeFile, removeStoredFile } from "./storage";
 
-export type ActionState = { ok?: boolean; error?: string; message?: string };
+export type ActionState = {
+  ok?: boolean;
+  error?: string;
+  message?: string;
+  /** Login is a two-stage flow: password first, then the authenticator code. */
+  stage?: "password" | "totp" | "enroll";
+  qr?: string;
+  secretText?: string;
+};
 
 async function requireUser() {
   const user = await getSessionUser();
@@ -20,22 +34,101 @@ async function requireUser() {
 /* ------------------------------------------------------------------- auth */
 
 export async function loginAction(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const next = String(formData.get("next") ?? "/admin");
+  const safeNext = next.startsWith("/admin") ? next : "/admin";
+  const ip = await clientIp();
+
+  // ---------------------------------------------------------------- stage 2
+  const code = String(formData.get("code") ?? "").trim();
+  if (code) {
+    const pending = await getPendingSession();
+    if (!pending) {
+      return { error: "That took too long. Enter your email and password again.", stage: "password" };
+    }
+
+    const row = await findAdminById(pending.userId);
+    if (!row || !row.is_active || !row.totp_secret) {
+      await destroySession();
+      return { error: "Sign-in could not be completed.", stage: "password" };
+    }
+    if (isLocked(row)) {
+      return { error: `Too many attempts. Try again in ${LOCKOUT_MINUTES} minutes.`, stage: "password" };
+    }
+
+    if (!verifyTotp(row.totp_secret, code)) {
+      await recordFailure(row);
+      await logAttempt(row.email, ip, false);
+      return {
+        error: "That code is not valid. Check your authenticator app and try again.",
+        stage: pending.stage,
+        ...(pending.stage === "enroll" ? await enrollmentPayload(row.email, row.totp_secret) : {}),
+      };
+    }
+
+    if (pending.stage === "enroll") {
+      await sql`UPDATE admin_users SET totp_enabled = TRUE WHERE id = ${row.id}`;
+    }
+    await recordSuccess(row.id);
+    await logAttempt(row.email, ip, true);
+    await createSession({
+      id: row.id, email: row.email, name: row.name,
+      role: row.role === "admin" ? "admin" : "editor",
+    });
+    redirect(safeNext);
+  }
+
+  // ---------------------------------------------------------------- stage 1
   const email = String(formData.get("email") ?? "").trim();
   const password = String(formData.get("password") ?? "");
-  const next = String(formData.get("next") ?? "/admin");
+  if (!email || !password) return { error: "Enter your email and password.", stage: "password" };
 
-  if (!email || !password) return { error: "Enter your email and password." };
-
-  let user;
-  try {
-    user = await authenticate(email, password);
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : "Login is unavailable." };
+  if (await tooManyAttemptsFromIp(ip)) {
+    return { error: "Too many sign-in attempts from this network. Try again later.", stage: "password" };
   }
-  if (!user) return { error: "Incorrect email or password." };
 
-  await createSession(user);
-  redirect(next.startsWith("/admin") ? next : "/admin");
+  let row;
+  try {
+    row = await findAdminByEmail(email);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Sign-in is unavailable.", stage: "password" };
+  }
+
+  // Deliberately identical response whether the account exists or not.
+  const generic = { error: "Incorrect email or password.", stage: "password" as const };
+
+  if (!row || !row.is_active) {
+    await logAttempt(email, ip, false);
+    return generic;
+  }
+  if (isLocked(row)) {
+    await logAttempt(email, ip, false);
+    return { error: `Too many attempts. Try again in ${LOCKOUT_MINUTES} minutes.`, stage: "password" };
+  }
+  if (!(await verifyPassword(password, row.password_hash))) {
+    await recordFailure(row);
+    await logAttempt(email, ip, false);
+    return generic;
+  }
+
+  // Password is correct — now require the second factor.
+  if (row.totp_enabled && row.totp_secret) {
+    await createPendingSession(row.id, "totp");
+    return { stage: "totp" };
+  }
+
+  // No authenticator yet: enrolment is mandatory, it cannot be skipped.
+  const secretValue = row.totp_secret || generateSecret();
+  await sql`UPDATE admin_users SET totp_secret = ${secretValue}, totp_enabled = FALSE WHERE id = ${row.id}`;
+  await createPendingSession(row.id, "enroll");
+  return { stage: "enroll", ...(await enrollmentPayload(row.email, secretValue)) };
+}
+
+/** QR image (data URL) plus the typed-in fallback, for authenticator setup. */
+async function enrollmentPayload(email: string, secretValue: string) {
+  const uri = otpauthUri(secretValue, email, site.nameEn || "Municipal Portal");
+  const QRCode = (await import("qrcode")).default;
+  const qr = await QRCode.toDataURL(uri, { margin: 1, width: 220 });
+  return { qr, secretText: formatSecret(secretValue) };
 }
 
 export async function logoutAction(): Promise<void> {
