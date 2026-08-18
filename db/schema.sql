@@ -160,3 +160,20 @@ CREATE INDEX IF NOT EXISTS app_files_app_idx         ON application_files (appli
 CREATE INDEX IF NOT EXISTS app_steps_app_idx         ON application_steps (application_id);
 CREATE INDEX IF NOT EXISTS app_docs_app_idx          ON application_documents (application_id);
 CREATE INDEX IF NOT EXISTS search_log_term_idx       ON search_log (term);
+
+-- ------------------------------------------------- two-factor + lockout (v2)
+-- Added after the first release; every statement is safe to re-run.
+ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS totp_secret     TEXT;
+ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS totp_enabled    BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS failed_attempts INTEGER NOT NULL DEFAULT 0;
+ALTER TABLE admin_users ADD COLUMN IF NOT EXISTS locked_until    TIMESTAMPTZ;
+
+CREATE TABLE IF NOT EXISTS login_attempts (
+  id         SERIAL PRIMARY KEY,
+  email      TEXT NOT NULL,
+  ip         TEXT NOT NULL DEFAULT '',
+  successful BOOLEAN NOT NULL DEFAULT FALSE,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS login_attempts_ip_idx    ON login_attempts (ip, created_at);
+CREATE INDEX IF NOT EXISTS login_attempts_email_idx ON login_attempts (email, created_at);
