@@ -1,0 +1,195 @@
+@import "tailwindcss";
+
+/* =====================================================================
+   Government of Nepal inspired design tokens.
+   Flag-anchored: crimson (#CE1126) and Prussian blue (#003893), with a
+   restrained neutral scale and WCAG AA contrast throughout.
+   ===================================================================== */
+@theme {
+  --color-crimson-50:  #fdf2f4;
+  --color-crimson-100: #fbe0e4;
+  --color-crimson-600: #ce1126;
+  --color-crimson-700: #ab0d1f;
+  --color-crimson-800: #8a0a19;
+
+  --color-royal-50:  #eef3fb;
+  --color-royal-100: #dbe5f6;
+  --color-royal-200: #b9cbec;
+  --color-royal-500: #12509f;
+  --color-royal-600: #003893;
+  --color-royal-700: #002d76;
+  --color-royal-800: #00234f;
+
+  --color-ink-900: #10192b;
+  --color-ink-800: #1a2437;
+  --color-ink-700: #33405a;
+  --color-ink-500: #5a6478;
+  --color-ink-400: #7b8496;
+  --color-line-200: #dde3ec;
+  --color-line-100: #eaeef4;
+  --color-surface-50: #f6f8fb;
+
+  --color-success-600: #0a6c3d;
+  --color-success-50:  #e9f6ef;
+  --color-warning-600: #8a5a00;
+  --color-warning-50:  #fdf4e3;
+  --color-danger-600:  #b3261e;
+  --color-danger-50:   #fdeceb;
+
+  --font-sans: "Noto Sans", "Noto Sans Devanagari", ui-sans-serif, system-ui, sans-serif;
+  --font-devanagari: "Noto Sans Devanagari", "Noto Sans", ui-sans-serif, sans-serif;
+
+  --radius-gov: 6px;
+}
+
+:root {
+  color-scheme: light;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+}
+
+body {
+  background: #ffffff;
+  color: var(--color-ink-800);
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.65;
+}
+
+/* Devanagari needs a touch more line height to avoid clipped matras. */
+:lang(ne),
+.ne {
+  font-family: var(--font-devanagari);
+  line-height: 1.85;
+}
+
+*:focus-visible {
+  outline: 3px solid var(--color-royal-500);
+  outline-offset: 2px;
+  border-radius: 3px;
+}
+
+/* ------------------------------------------------------------ components */
+@layer components {
+  .gov-container {
+    @apply mx-auto w-full max-w-[1180px] px-4 sm:px-6;
+  }
+
+  /* Buttons ------------------------------------------------------------ */
+  .btn {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[6px]
+           border border-transparent px-4 py-2.5 text-[15px] font-semibold leading-tight
+           transition-colors disabled:cursor-not-allowed disabled:opacity-55;
+  }
+  .btn-primary {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[6px]
+           border border-transparent bg-royal-600 px-4 py-2.5 text-[15px] font-semibold
+           leading-tight text-white transition-colors hover:bg-royal-700
+           disabled:cursor-not-allowed disabled:opacity-55;
+  }
+  .btn-crimson {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[6px]
+           border border-transparent bg-crimson-600 px-4 py-2.5 text-[15px] font-semibold
+           leading-tight text-white transition-colors hover:bg-crimson-700
+           disabled:cursor-not-allowed disabled:opacity-55;
+  }
+  .btn-secondary {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[6px]
+           border border-royal-600 bg-white px-4 py-2.5 text-[15px] font-semibold
+           leading-tight text-royal-600 transition-colors hover:bg-royal-50
+           disabled:cursor-not-allowed disabled:opacity-55;
+  }
+  .btn-outline {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[6px]
+           border border-line-200 bg-white px-4 py-2.5 text-[15px] font-semibold
+           leading-tight text-ink-700 transition-colors hover:bg-surface-50
+           disabled:cursor-not-allowed disabled:opacity-55;
+  }
+  .btn-ghost {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[6px]
+           border border-transparent px-4 py-2.5 text-[15px] font-semibold leading-tight
+           text-royal-600 transition-colors hover:bg-royal-50;
+  }
+  .btn-danger {
+    @apply inline-flex min-h-[44px] items-center justify-center gap-2 rounded-[6px]
+           border border-danger-600 bg-white px-4 py-2.5 text-[15px] font-semibold
+           leading-tight text-danger-600 transition-colors hover:bg-danger-50;
+  }
+  .btn-sm {
+    @apply min-h-[36px] px-3 py-1.5 text-[13.5px];
+  }
+
+  /* Surfaces ----------------------------------------------------------- */
+  .gov-card {
+    @apply rounded-[6px] border border-line-200 bg-white;
+  }
+  .gov-panel {
+    @apply rounded-[6px] border border-line-200 bg-surface-50 p-5;
+  }
+
+  /* Forms -------------------------------------------------------------- */
+  .gov-label {
+    @apply mb-1.5 block text-[14px] font-semibold text-ink-700;
+  }
+  .gov-hint {
+    @apply mt-1 block text-[13px] text-ink-500;
+  }
+  .gov-input,
+  .gov-select,
+  .gov-textarea {
+    @apply block min-h-[44px] w-full rounded-[6px] border border-line-200 bg-white px-3 py-2.5
+           text-[15px] text-ink-900 placeholder:text-ink-400 focus:border-royal-600;
+  }
+  .gov-textarea {
+    @apply min-h-[96px] py-2;
+  }
+  .gov-select {
+    @apply pr-9;
+  }
+
+  /* Badges ------------------------------------------------------------- */
+  .badge {
+    @apply inline-flex items-center gap-1 rounded-[4px] px-2 py-0.5 text-[12.5px] font-semibold;
+  }
+  .badge-neutral { @apply inline-flex items-center gap-1 rounded-[4px] bg-line-100 px-2 py-0.5 text-[12.5px] font-semibold text-ink-700; }
+  .badge-royal   { @apply inline-flex items-center gap-1 rounded-[4px] bg-royal-50 px-2 py-0.5 text-[12.5px] font-semibold text-royal-700; }
+  .badge-success { @apply inline-flex items-center gap-1 rounded-[4px] bg-success-50 px-2 py-0.5 text-[12.5px] font-semibold text-success-600; }
+  .badge-warning { @apply inline-flex items-center gap-1 rounded-[4px] bg-warning-50 px-2 py-0.5 text-[12.5px] font-semibold text-warning-600; }
+  .badge-danger  { @apply inline-flex items-center gap-1 rounded-[4px] bg-danger-50 px-2 py-0.5 text-[12.5px] font-semibold text-danger-600; }
+
+  /* Alerts ------------------------------------------------------------- */
+  .alert-info    { @apply rounded-[6px] border-l-4 border-royal-600 bg-royal-50 px-4 py-3 text-[15px] text-royal-800; }
+  .alert-success { @apply rounded-[6px] border-l-4 border-success-600 bg-success-50 px-4 py-3 text-[15px] text-success-600; }
+  .alert-warning { @apply rounded-[6px] border-l-4 border-warning-600 bg-warning-50 px-4 py-3 text-[15px] text-warning-600; }
+  .alert-danger  { @apply rounded-[6px] border-l-4 border-danger-600 bg-danger-50 px-4 py-3 text-[15px] text-danger-600; }
+
+  /* Tables ------------------------------------------------------------- */
+  .gov-table {
+    @apply w-full border-collapse text-[15px];
+  }
+  .gov-table th {
+    @apply border-b border-line-200 bg-surface-50 px-3 py-2.5 text-left text-[13.5px]
+           font-semibold tracking-wide text-ink-500;
+  }
+  .gov-table td {
+    @apply border-b border-line-100 px-3 py-3 align-middle;
+  }
+
+  .section-title {
+    @apply text-[20px] font-bold text-ink-900 sm:text-[22px];
+  }
+  .page-title {
+    @apply text-[26px] font-bold leading-tight text-ink-900 sm:text-[32px];
+  }
+}
+
+/* ---------------------------------------------------------------- print */
+@media print {
+  .no-print { display: none !important; }
+  body { font-size: 12pt; background: #fff; }
+  .print-sheet { box-shadow: none !important; border: none !important; padding: 0 !important; }
+  a[href]::after { content: ""; }
+  @page { margin: 18mm 16mm; }
+}
