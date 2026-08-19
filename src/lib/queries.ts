@@ -164,6 +164,23 @@ export async function getApplicationById(id: number): Promise<ApplicationDetail 
   return hydrate(app);
 }
 
+/**
+ * jsonb columns should arrive as arrays, but a row written by an older build
+ * may hold a JSON *string*. Coerce either shape so the UI never sees a string.
+ */
+function asArray<T>(value: unknown): T[] {
+  if (Array.isArray(value)) return value as T[];
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return Array.isArray(parsed) ? (parsed as T[]) : [];
+    } catch {
+      return [];
+    }
+  }
+  return [];
+}
+
 async function hydrate(app: ApplicationDetail): Promise<ApplicationDetail> {
   const [steps, requirements, files] = await Promise.all([
     sql<ApplicationStep[]>`
@@ -172,14 +189,19 @@ async function hydrate(app: ApplicationDetail): Promise<ApplicationDetail> {
       SELECT * FROM application_documents WHERE application_id = ${app.id} ORDER BY position, id`,
     sql<ApplicationFile[]>`
       SELECT id, application_id, position, label_ne, label_en, kind, is_editable, storage,
-             url, blob_pathname, mime, size, original_name, created_at
+             url, blob_pathname, mime, size, original_name, created_at,
+             is_template, template_fields
         FROM application_files WHERE application_id = ${app.id} ORDER BY position, id`,
   ]);
   return {
     ...app,
+    online_form_schema: asArray(app.online_form_schema),
     steps: [...steps],
     requirements: [...requirements],
-    files: [...files],
+    files: files.map((file) => ({
+      ...file,
+      template_fields: asArray(file.template_fields),
+    })),
   };
 }
 

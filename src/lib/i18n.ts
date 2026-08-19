@@ -123,6 +123,7 @@ const dict = {
   "admin.taxonomy": { ne: "वर्ग, शाखा र वडा", en: "Categories, sections & wards" },
   "admin.newApplication": { ne: "नयाँ निवेदन थप्नुहोस्", en: "Add application" },
   "admin.backToPortal": { ne: "पोर्टलमा फर्कनुहोस्", en: "Back to portal" },
+  "admin.settings": { ne: "पोर्टल सेटिङ", en: "Portal settings" },
 } satisfies Dict;
 
 export type TranslationKey = keyof typeof dict;

@@ -32,6 +32,16 @@ export type ApplicationFile = {
   label_ne: string; label_en: string; kind: FileKind; is_editable: boolean;
   storage: "db" | "blob"; url: string | null; blob_pathname: string | null;
   mime: string; size: number; original_name: string; created_at: string;
+  /** A .docx carrying {{placeholders}} that citizens can fill online. */
+  is_template: boolean;
+  template_fields: TemplateField[];
+};
+
+export type TemplateField = {
+  key: string;
+  label_ne: string;
+  label_en: string;
+  type: "text" | "textarea" | "number" | "date";
 };
 
 export type ApplicationSummary = {

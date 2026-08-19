@@ -10,10 +10,11 @@ import {
   LOCKOUT_MINUTES, recordFailure, recordSuccess, tooManyAttemptsFromIp, verifyPassword,
 } from "./auth";
 import { formatSecret, generateSecret, otpauthUri, verifyTotp } from "./totp";
-import { site } from "./site";
+import { getSiteSettings, saveSiteSettings, SETTING_KEYS, type SiteSettings } from "./settings";
 import { buildSearchIndex } from "./translit";
 import { slugify } from "./slug";
 import { storeFile, removeStoredFile } from "./storage";
+import { extractPlaceholders, isDocx } from "./docx-template";
 
 export type ActionState = {
   ok?: boolean;
@@ -125,6 +126,7 @@ export async function loginAction(_prev: ActionState, formData: FormData): Promi
 
 /** QR image (data URL) plus the typed-in fallback, for authenticator setup. */
 async function enrollmentPayload(email: string, secretValue: string) {
+  const site = await getSiteSettings();
   const uri = otpauthUri(secretValue, email, site.nameEn || "Municipal Portal");
   const QRCode = (await import("qrcode")).default;
   const qr = await QRCode.toDataURL(uri, { margin: 1, width: 220 });
@@ -236,7 +238,7 @@ export async function saveApplication(_prev: ActionState, formData: FormData): P
           keywords_ne = ${data.keywords_ne}, keywords_en = ${data.keywords_en}, aliases = ${data.aliases},
           search_index = ${searchIndex}, status = ${data.status}, is_sample = ${data.is_sample},
           online_form_enabled = ${data.online_form_enabled},
-          online_form_schema = ${JSON.stringify(data.online_form_schema)}::jsonb,
+          online_form_schema = ${sql.json(data.online_form_schema)},
           updated_by = ${user.id}, updated_at = now(),
           published_at = CASE WHEN ${data.status} = 'published' AND published_at IS NULL THEN now() ELSE published_at END
         WHERE id = ${applicationId}`;
@@ -254,7 +256,7 @@ export async function saveApplication(_prev: ActionState, formData: FormData): P
           ${data.office_ne}, ${data.office_en}, ${data.fee_ne}, ${data.fee_en},
           ${data.duration_ne}, ${data.duration_en}, ${data.keywords_ne}, ${data.keywords_en},
           ${data.aliases}, ${searchIndex}, ${data.status}, ${data.is_sample},
-          ${data.online_form_enabled}, ${JSON.stringify(data.online_form_schema)}::jsonb,
+          ${data.online_form_enabled}, ${sql.json(data.online_form_schema)},
           ${user.id}, ${user.id}, ${data.status === "published" ? sql`now()` : null}
         ) RETURNING id`;
       applicationId = row.id;
@@ -343,25 +345,90 @@ export async function uploadApplicationFile(_prev: ActionState, formData: FormDa
 
   if (!(file instanceof File) || file.size === 0) return { error: "Choose a file to upload." };
 
+  let detected = 0;
   try {
     const stored = await storeFile(file);
+
+    // A double-click or a page refresh must not attach the same file twice.
+    const [duplicate] = await sql<{ id: number }[]>`
+      SELECT id FROM application_files
+       WHERE application_id = ${applicationId}
+         AND original_name = ${stored.originalName}
+         AND size = ${stored.size}
+       LIMIT 1`;
+    if (duplicate) {
+      return { ok: true, message: "That file is already attached to this application." };
+    }
     const [{ position }] = await sql<{ position: number }[]>`
       SELECT COALESCE(max(position) + 1, 0) AS position FROM application_files WHERE application_id = ${applicationId}`;
 
+    // A .docx is scanned for {{placeholders}}; each one becomes a form field
+    // the administrator can label, and a citizen can then fill online.
+    let templateFields: { key: string; label_ne: string; label_en: string; type: string }[] = [];
+    if (isDocx(file.name, stored.mime)) {
+      try {
+        const bytes = stored.data ?? Buffer.from(await file.arrayBuffer());
+        templateFields = (await extractPlaceholders(bytes)).map((key) => ({
+          key,
+          label_ne: "",
+          label_en: key.replace(/[_.\-]+/g, " "),
+          type: "text",
+        }));
+      } catch {
+        templateFields = [];
+      }
+    }
+    detected = templateFields.length;
+
     await sql`
       INSERT INTO application_files
-        (application_id, position, label_ne, label_en, kind, is_editable, storage, url, blob_pathname, data, mime, size, original_name)
+        (application_id, position, label_ne, label_en, kind, is_editable, storage, url, blob_pathname,
+         data, mime, size, original_name, is_template, template_fields)
       VALUES
         (${applicationId}, ${position}, ${labelNe}, ${labelEn}, ${stored.kind}, ${editable},
          ${stored.storage}, ${stored.url}, ${stored.blobPathname}, ${stored.data}, ${stored.mime},
-         ${stored.size}, ${stored.originalName})`;
+         ${stored.size}, ${stored.originalName}, ${detected > 0},
+         ${sql.json(templateFields)})`;
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Upload failed." };
   }
 
   revalidatePath(`/admin/applications/${applicationId}`);
   revalidatePath("/services");
-  return { ok: true, message: "File uploaded." };
+  return {
+    ok: true,
+    message: detected
+      ? `File uploaded — ${detected} fillable field${detected === 1 ? "" : "s"} detected. Label them below.`
+      : "File uploaded.",
+  };
+}
+
+/** Save the Nepali/English labels an administrator gave a template's fields. */
+export async function saveTemplateFields(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  await requireUser();
+  const fileId = Number(formData.get("file_id"));
+  const applicationId = Number(formData.get("application_id"));
+
+  let fields;
+  try {
+    fields = z.array(z.object({
+      key: z.string().min(1),
+      label_ne: z.string().default(""),
+      label_en: z.string().default(""),
+      type: z.enum(["text", "textarea", "number", "date"]).default("text"),
+    })).parse(JSON.parse(String(formData.get("fields") ?? "[]")));
+  } catch {
+    return { error: "Could not read the field list." };
+  }
+
+  await sql`UPDATE application_files
+               SET template_fields = ${sql.json(fields)},
+                   is_template = ${fields.length > 0}
+             WHERE id = ${fileId}`;
+
+  revalidatePath(`/admin/applications/${applicationId}`);
+  revalidatePath("/services");
+  return { ok: true, message: "Field labels saved." };
 }
 
 export async function deleteApplicationFile(
@@ -449,6 +516,36 @@ export async function deleteTaxonomy(
   if (kind === "ward") await sql`DELETE FROM wards WHERE id = ${id}`;
   revalidatePath("/admin/taxonomy");
   revalidatePath("/");
+}
+
+/* --------------------------------------------------------------- settings */
+
+/**
+ * Portal identity — municipality name, address, contact, logo. Saved to the
+ * database, so the change is live everywhere on the next page load with no
+ * redeploy and no environment-variable editing.
+ */
+export async function saveSettings(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  if (user.role !== "admin") return { error: "Only an administrator can change portal settings." };
+
+  const values: Partial<SiteSettings> = {};
+  for (const key of SETTING_KEYS) {
+    const raw = formData.get(key);
+    if (typeof raw === "string") values[key] = raw.trim();
+  }
+  if (!values.nameNe && !values.nameEn) {
+    return { error: "Enter the municipality name in at least one language." };
+  }
+
+  try {
+    await saveSiteSettings(values);
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "Could not save settings." };
+  }
+
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Settings saved. The new name appears across the portal immediately." };
 }
 
 /* ------------------------------------------------------------ admin users */
