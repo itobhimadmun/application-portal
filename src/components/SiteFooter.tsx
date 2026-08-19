@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { getLocale, translator } from "@/lib/i18n";
-import { site } from "@/lib/site";
+import { getSiteSettings } from "@/lib/settings";
 
 export default async function SiteFooter() {
   const locale = await getLocale();
   const t = translator(locale);
+  const site = await getSiteSettings();
   const year = new Date().getFullYear();
 
   return (

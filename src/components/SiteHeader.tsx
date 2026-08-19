@@ -1,13 +1,18 @@
 import Link from "next/link";
 import { Suspense } from "react";
 import { getLocale, translator, type Locale } from "@/lib/i18n";
-import { site } from "@/lib/site";
+import { getSiteSettings } from "@/lib/settings";
+import { getSessionUser } from "@/lib/auth";
+import { logoutAction } from "@/lib/actions";
 import MobileNav from "./MobileNav";
 import LanguageSwitcher from "./LanguageSwitcher";
+import { IconSettings } from "./ui/Icons";
 
 export default async function SiteHeader() {
   const locale: Locale = await getLocale();
   const t = translator(locale);
+  const site = await getSiteSettings();
+  const user = await getSessionUser();
 
   const nav = [
     { href: "/", label: t("nav.home") },
@@ -20,6 +25,33 @@ export default async function SiteHeader() {
 
   return (
     <header className="no-print">
+      {/* Signed-in staff keep a way back to the dashboard from every public page. */}
+      {user ? (
+        <div className="bg-ink-900 text-white">
+          <div className="gov-container flex flex-wrap items-center justify-between gap-2 py-1.5 text-[13px]">
+            <span className="flex items-center gap-2">
+              <IconSettings className="h-4 w-4" />
+              {locale === "en"
+                ? `Signed in as ${user.name || user.email}`
+                : `${user.name || user.email} को रूपमा लगइन हुनुहुन्छ`}
+            </span>
+            <span className="flex items-center gap-3">
+              <Link href="/admin" className="font-semibold underline-offset-2 hover:underline">
+                {t("admin.dashboard")}
+              </Link>
+              <Link href="/admin/applications" className="hidden font-semibold underline-offset-2 hover:underline sm:inline">
+                {t("admin.applications")}
+              </Link>
+              <form action={logoutAction}>
+                <button type="submit" className="font-semibold underline-offset-2 hover:underline">
+                  {t("admin.signOut")}
+                </button>
+              </form>
+            </span>
+          </div>
+        </div>
+      ) : null}
+
       {/* Government band */}
       <div className="bg-crimson-600 text-white">
         <div className="gov-container flex h-9 items-center justify-between text-[13px]">
