@@ -1,6 +1,7 @@
 import { sql } from "./db";
 import { renderDocxToHtml } from "./docx-html";
-import type { ApplicationFile, DocxPageBox } from "./types";
+import { BLANK, blankRules } from "./docx-blank";
+import type { ApplicationFile, DocxPageBox, TemplateField } from "./types";
 
 /**
  * The rendered form, ready to be shown as a page.
@@ -79,4 +80,33 @@ export function primaryFile(files: ApplicationFile[]): ApplicationFile | undefin
   return files.find((file) => file.is_template)
     ?? files.find((file) => file.kind === "word")
     ?? files[0];
+}
+
+/**
+ * The Word file a citizen should be given.
+ *
+ * If staff have uploaded a plain copy alongside the template, that is what they
+ * want handed out. Otherwise the template itself is served — with its
+ * placeholders turned into ruled lines, never as `{{name}}`.
+ */
+export function downloadableWord(files: ApplicationFile[]): ApplicationFile | undefined {
+  return files.find((file) => file.kind === "word" && !file.is_template)
+    ?? files.find((file) => file.kind === "word");
+}
+
+/**
+ * Swap the ruled line inside every placeholder span for one sized to that
+ * field, so the page shows the same blanks the printed copy will have.
+ *
+ * Done here rather than in the renderer because a field's type is chosen after
+ * the file is uploaded and can change later, while the rendered HTML is cached.
+ */
+export function applyBlanks(html: string, fields: TemplateField[]): string {
+  if (!html) return html;
+  const rules = blankRules(fields);
+  return html.replace(
+    /(<span class="docx-field" data-field="([^"]*)">)[^<]*(<\/span>)/g,
+    (_whole, open: string, key: string, close: string) =>
+      `${open}${rules[key] ?? BLANK}${close}`
+  );
 }

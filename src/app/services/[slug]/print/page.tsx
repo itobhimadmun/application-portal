@@ -4,7 +4,7 @@ import DocumentPage from "@/components/DocumentPage";
 import DocumentViewport from "@/components/DocumentViewport";
 import PrintButton from "@/components/PrintButton";
 import { getLocale, translator, pick } from "@/lib/i18n";
-import { getPreview, primaryFile } from "@/lib/preview";
+import { applyBlanks, getPreview, primaryFile } from "@/lib/preview";
 import { getApplicationBySlug } from "@/lib/queries";
 
 export const dynamic = "force-dynamic";
@@ -18,17 +18,26 @@ type Params = Promise<{ slug: string }>;
  * supplies the margins the Word file specified, so the sheet that comes out
  * matches the official form rather than a web page about it.
  */
-export default async function PrintPage({ params }: { params: Params }) {
+export default async function PrintPage({
+  params, searchParams,
+}: {
+  params: Params;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const locale = await getLocale();
   const t = translator(locale);
   const { slug } = await params;
+  const wantsPdf = (await searchParams).pdf === "1";
   const L = (ne: string, en: string) => (locale === "en" ? en : ne);
 
   const app = await getApplicationBySlug(slug);
   if (!app) notFound();
 
   const lead = primaryFile(app.files);
-  const preview = lead ? await getPreview(lead) : null;
+  const rendered = lead ? await getPreview(lead) : null;
+  const preview = rendered && lead
+    ? { ...rendered, html: applyBlanks(rendered.html, lead.template_fields) }
+    : null;
   const title = pick(locale, app.title_ne, app.title_en);
 
   if (!preview) {
@@ -66,12 +75,20 @@ export default async function PrintPage({ params }: { params: Params }) {
           <div>
             <h1 className="text-[20px] font-bold text-ink-900">{title}</h1>
             <p className="text-[13.5px] text-ink-500">
-              {L("खाली फाराम — प्रिन्ट गरेर हातले भर्न सकिन्छ।",
-                 "Blank form — print it and complete it by hand.")}
+              {L("खाली फाराम — प्रिन्ट गरेर कलमले भर्न सकिन्छ।",
+                 "Blank form — print it and complete it with a pen.")}
             </p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <PrintButton label={t("doc.print")} className="btn-crimson" />
+            <PrintButton
+              label={wantsPdf ? t("doc.downloadPdf") : t("doc.print")}
+              className="btn-crimson"
+              auto={wantsPdf}
+              hint={wantsPdf ? L(
+                "प्रिन्ट विन्डोमा गन्तव्य (Destination) मा “Save as PDF” रोज्नुहोस्।",
+                "In the print window, choose “Save as PDF” as the destination."
+              ) : undefined}
+            />
             <Link href={`/services/${app.slug}/form`} className="btn-secondary">
               {t("doc.fillOnline")}
             </Link>

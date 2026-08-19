@@ -28,8 +28,11 @@ const summarySelect = () => sql`
   c.slug AS category_slug, c.name_ne AS category_name_ne, c.name_en AS category_name_en,
   s.slug AS section_slug, s.name_ne AS section_name_ne, s.name_en AS section_name_en,
   COALESCE((SELECT array_agg(DISTINCT f.kind) FROM application_files f WHERE f.application_id = a.id), '{}') AS file_kinds,
+  -- A plain copy uploaded alongside the template wins; otherwise the template
+  -- is served, blank-filled, by /api/files.
   (SELECT f.id FROM application_files f
-    WHERE f.application_id = a.id AND f.kind = 'word' ORDER BY f.position, f.id LIMIT 1) AS word_file_id,
+    WHERE f.application_id = a.id AND f.kind = 'word'
+    ORDER BY f.is_template, f.position, f.id LIMIT 1) AS word_file_id,
   (SELECT f.id FROM application_files f
     WHERE f.application_id = a.id AND f.kind = 'pdf'  ORDER BY f.position, f.id LIMIT 1) AS pdf_file_id,
   EXISTS (SELECT 1 FROM application_files f

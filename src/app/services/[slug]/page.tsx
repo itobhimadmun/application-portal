@@ -8,7 +8,7 @@ import DocumentPage from "@/components/DocumentPage";
 import DocumentViewport from "@/components/DocumentViewport";
 import SetupNotice from "@/components/SetupNotice";
 import { getLocale, translator, pick } from "@/lib/i18n";
-import { getPreview, primaryFile } from "@/lib/preview";
+import { applyBlanks, getPreview, primaryFile } from "@/lib/preview";
 import { getApplicationBySlug, getRelatedApplications, registerView } from "@/lib/queries";
 import { humanSize } from "@/lib/storage";
 import { IconAlert, IconPrint } from "@/components/ui/Icons";
@@ -55,7 +55,12 @@ export default async function ApplicationPage({ params }: { params: Params }) {
   const actions = actionsOfFiles(app.slug, app.files);
 
   const lead = primaryFile(app.files);
-  const preview = lead ? await getPreview(lead) : null;
+  const rendered = lead ? await getPreview(lead) : null;
+  // What is shown is the blank sheet, ruled lines and all — the same thing the
+  // Word and PDF buttons hand over.
+  const preview = rendered && lead
+    ? { ...rendered, html: applyBlanks(rendered.html, lead.template_fields) }
+    : null;
   const pdf = app.files.find((file) => file.kind === "pdf");
 
   return (

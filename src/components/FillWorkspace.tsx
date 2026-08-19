@@ -5,7 +5,7 @@ import DocumentViewport from "./DocumentViewport";
 import { IconDownload, IconPrint, IconAlert } from "./ui/Icons";
 import type { Locale } from "@/lib/i18n";
 import type { DocxPageBox, TemplateField } from "@/lib/types";
-import { BLANK } from "@/lib/docx-blank";
+import { blankRules } from "@/lib/docx-blank";
 
 /**
  * Filling an application, side by side with the application itself.
@@ -50,16 +50,20 @@ export default function FillWorkspace({
    * HTML, not a component tree, and re-rendering it on every keystroke would
    * be both slower and pointless.
    */
+  // Ruled lines are sized by field type, so an untouched blank looks exactly as
+  // it will on the printed sheet.
+  const rules = useMemo(() => blankRules(fields), [fields]);
+
   useEffect(() => {
     const root = paper.current;
     if (!root) return;
     for (const node of root.querySelectorAll<HTMLElement>("[data-field]")) {
       const key = node.dataset.field ?? "";
       const value = values[key]?.trim() ?? "";
-      node.textContent = value || BLANK;
+      node.textContent = value || rules[key] || "";
       node.dataset.filled = value ? "1" : "0";
     }
-  }, [values, html]);
+  }, [values, html, rules]);
 
   const filledCount = useMemo(
     () => fields.filter((field) => (values[field.key] ?? "").trim()).length,

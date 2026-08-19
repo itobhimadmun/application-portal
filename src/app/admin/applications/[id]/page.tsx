@@ -90,9 +90,17 @@ export default async function EditApplicationPage({
                     <td className="text-ink-500">{file.storage === "blob" ? "Blob" : "Postgres"}</td>
                     <td>
                       <div className="flex justify-end gap-2">
-                        <a href={`/api/files/${file.id}?download=1`} className="btn-outline btn-sm">
+                        {/* Staff need the file as uploaded — placeholders and
+                            all — to edit it; the public link hands out the
+                            blank copy with ruled lines instead. */}
+                        <a href={`/api/files/${file.id}?download=1&raw=1`} className="btn-outline btn-sm">
                           {t("doc.download")}
                         </a>
+                        {file.is_template ? (
+                          <a href={`/api/files/${file.id}?download=1`} className="btn-outline btn-sm">
+                            {L("खाली प्रति", "Blank copy")}
+                          </a>
+                        ) : null}
                         <ConfirmButton
                           action={deleteApplicationFile.bind(null, file.id, application.id)}
                           label={L("हटाउनुहोस्", "Remove")}

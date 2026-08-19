@@ -1,4 +1,5 @@
 import JSZip from "jszip";
+import { BLANK } from "./docx-blank";
 
 /**
  * Turns an uploaded .docx into a fillable form.
@@ -82,10 +83,18 @@ export function flattenPlaceholderParagraphs(xml: string): string {
   return rewriteParagraphs(xml, (text) => text, true);
 }
 
-/** Produce a copy of the template with every placeholder replaced. */
+/**
+ * Produce a copy of the template with every placeholder replaced.
+ *
+ * A placeholder with no value becomes the ruled line for that field, so the
+ * same function serves both jobs: the citizen's completed download, and the
+ * blank copy someone prints to fill in with a pen. Either way the finished
+ * file never contains `{{...}}`.
+ */
 export async function fillDocxTemplate(
   buffer: Buffer,
-  values: Record<string, string>
+  values: Record<string, string>,
+  rules: Record<string, string> = {}
 ): Promise<Buffer> {
   const zip = await JSZip.loadAsync(buffer);
 
@@ -94,7 +103,7 @@ export async function fillDocxTemplate(
     const filled = rewriteParagraphs(xml, (text) =>
       text.replace(PLACEHOLDER, (whole, key: string) => {
         const value = values[key];
-        return value === undefined || value === "" ? "……………" : value;
+        return value === undefined || value === "" ? rules[key] ?? BLANK : value;
       })
     );
     zip.file(part, filled);

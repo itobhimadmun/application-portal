@@ -41,6 +41,14 @@ export default function TemplateFieldsEditor({
           "These names come from the {{ }} placeholders inside the file. Give each one the label a citizen should see."
         )}
       </p>
+      {/* The type is not only about the input a citizen types into: it also
+          sets how long the ruled line is on the downloaded blank copy. */}
+      <p className="mt-1 text-[13.5px] text-ink-700">
+        {L(
+          "प्रकारले डाउनलोड हुने खाली प्रतिमा कति लामो धर्को आउने भन्ने पनि निर्धारण गर्छ — अंकलाई छोटो, ठेगाना वा अनुच्छेदलाई लामो।",
+          "The type also sets how long the ruled line is on the downloaded blank copy — short for a number, long for an address or a paragraph."
+        )}
+      </p>
 
       {state.error ? <p className="alert-danger mt-3" role="alert">{state.error}</p> : null}
       {state.ok ? <p className="alert-success mt-3" role="status">{state.message}</p> : null}

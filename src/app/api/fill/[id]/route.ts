@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { sql } from "@/lib/db";
 import { fillDocxTemplate } from "@/lib/docx-template";
+import { blankRules } from "@/lib/docx-blank";
 import type { TemplateField } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -61,7 +62,9 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
   }
 
   try {
-    const filled = await fillDocxTemplate(source, values);
+    // Anything the citizen left empty becomes a ruled line, so a
+    // part-completed download can still be finished by hand.
+    const filled = await fillDocxTemplate(source, values, blankRules(file.template_fields ?? []));
     const name = encodeURIComponent(file.original_name.replace(/\.docx$/i, "") || "application");
     return new NextResponse(Uint8Array.from(filled), {
       headers: {

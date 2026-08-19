@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Locale } from "@/lib/i18n";
+import { downloadableWord } from "@/lib/preview";
 import type { ApplicationFile, ApplicationSummary } from "@/lib/types";
 import { IconDownload, IconEdit, IconEye } from "./ui/Icons";
 
@@ -36,7 +37,7 @@ export function actionsOf(app: ApplicationSummary): ApplicationActionSet {
 export function actionsOfFiles(slug: string, files: ApplicationFile[]): ApplicationActionSet {
   return {
     slug,
-    wordFileId: files.find((file) => file.kind === "word")?.id ?? null,
+    wordFileId: downloadableWord(files)?.id ?? null,
     pdfFileId: files.find((file) => file.kind === "pdf")?.id ?? null,
     fillable: files.some((file) => file.is_template && file.template_fields.length > 0),
     viewable: files.some((file) => file.kind === "pdf" || (file.kind === "word" && Boolean(file.preview_html))),
@@ -79,8 +80,17 @@ export default function ApplicationActions({
         <a href={`/api/files/${pdfFileId}?download=1`} className={`btn-outline${small}`}>
           <IconDownload className={icon} /> PDF
         </a>
+      ) : viewable ? (
+        // No PDF was uploaded, so one is made from the form itself: this opens
+        // the blank sheet with the print dialog already up, where the citizen
+        // picks "Save as PDF".
+        <Link href={`/services/${slug}/print?pdf=1`} className={`btn-outline${small}`}>
+          <IconDownload className={icon} /> PDF
+        </Link>
       ) : null}
 
+      {/* A template downloads as a blank copy with ruled lines, never as
+          {{placeholders}} — see the /api/files route. */}
       {wordFileId ? (
         <a href={`/api/files/${wordFileId}?download=1`} className={`btn-outline${small}`}>
           <IconDownload className={icon} /> Word
