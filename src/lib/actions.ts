@@ -13,7 +13,9 @@ import { formatSecret, generateSecret, otpauthUri, verifyTotp } from "./totp";
 import { getSiteSettings, saveSiteSettings, SETTING_KEYS, type SiteSettings } from "./settings";
 import { buildSearchIndex } from "./translit";
 import { slugify } from "./slug";
-import { storeFile, removeStoredFile } from "./storage";
+import { storeFile, removeStoredFile, humanSize } from "./storage";
+import { deleteBrandingAsset, saveBrandingAsset } from "./branding";
+import { imageMime, LOGO_KEY, MAX_BRANDING_BYTES } from "./branding-formats";
 import { isDocx } from "./docx-template";
 import { renderDocxToHtml } from "./docx-html";
 
@@ -498,6 +500,47 @@ export async function saveSettings(_prev: ActionState, formData: FormData): Prom
 
   revalidatePath("/", "layout");
   return { ok: true, message: "Settings saved. The new name appears across the portal immediately." };
+}
+
+/**
+ * Upload the municipality's emblem.
+ *
+ * The image is stored in the database and the logo setting is pointed at it, so
+ * an administrator can change the emblem without touching the repository or
+ * waiting for a deployment.
+ */
+export async function uploadLogo(_prev: ActionState, formData: FormData): Promise<ActionState> {
+  const user = await requireUser();
+  if (user.role !== "admin") return { error: "Only an administrator can change the emblem." };
+
+  const file = formData.get("logo_file");
+  if (!(file instanceof File) || file.size === 0) return { error: "Choose an image to upload." };
+  if (file.size > MAX_BRANDING_BYTES) {
+    return { error: `That image is ${humanSize(file.size)}. Keep the emblem under ${humanSize(MAX_BRANDING_BYTES)}.` };
+  }
+
+  const mime = imageMime(file.name, file.type);
+  if (!mime) return { error: "Use an SVG, PNG, JPEG or WebP image." };
+
+  try {
+    const url = await saveBrandingAsset(LOGO_KEY, mime, Buffer.from(await file.arrayBuffer()));
+    await saveSiteSettings({ logo: url });
+  } catch (error) {
+    return { error: error instanceof Error ? error.message : "The emblem could not be saved." };
+  }
+
+  revalidatePath("/", "layout");
+  return { ok: true, message: "Emblem updated. It appears across the portal immediately." };
+}
+
+/** Go back to the emblem that ships with the portal. */
+export async function resetLogo(): Promise<void> {
+  const user = await requireUser();
+  if (user.role !== "admin") return;
+
+  await deleteBrandingAsset(LOGO_KEY);
+  await saveSiteSettings({ logo: "/emblem.svg" });
+  revalidatePath("/", "layout");
 }
 
 /* ------------------------------------------------------------ admin users */

@@ -187,3 +187,13 @@ ALTER TABLE application_files ADD COLUMN IF NOT EXISTS template_fields JSONB   N
 -- HTML is stored beside the file and rebuilt whenever the file changes.
 ALTER TABLE application_files ADD COLUMN IF NOT EXISTS preview_html TEXT  NOT NULL DEFAULT '';
 ALTER TABLE application_files ADD COLUMN IF NOT EXISTS preview_page JSONB NOT NULL DEFAULT '{}'::jsonb;
+
+-- ------------------------------------------------ branding uploads (v5)
+-- The emblem and any future brand image. Kept out of application_files
+-- because those belong to an application; these belong to the portal.
+CREATE TABLE IF NOT EXISTS branding_assets (
+  key        TEXT PRIMARY KEY,
+  mime       TEXT NOT NULL,
+  data       BYTEA NOT NULL,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

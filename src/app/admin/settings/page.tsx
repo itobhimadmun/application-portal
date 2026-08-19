@@ -1,4 +1,5 @@
 import ActionForm from "@/components/admin/ActionForm";
+import LogoUploader from "@/components/admin/LogoUploader";
 import SetupNotice from "@/components/SetupNotice";
 import { getLocale, translator } from "@/lib/i18n";
 import { getSiteSettings } from "@/lib/settings";
@@ -59,7 +60,14 @@ export default async function SettingsPage() {
         )}
       </p>
 
-      <ActionForm action={saveSettings} submitLabel={L("सुरक्षित गर्नुहोस्", "Save settings")} className="mt-5 space-y-6">
+      <LogoUploader
+        locale={locale}
+        current={site.logo}
+        isDefault={site.logo === "/emblem.svg"}
+        name={locale === "en" ? site.nameEn : site.nameNe}
+      />
+
+      <ActionForm action={saveSettings} submitLabel={L("सुरक्षित गर्नुहोस्", "Save settings")} className="mt-6 space-y-6">
         <fieldset className="gov-card p-5">
           <legend className="px-1 text-[16px] font-bold text-ink-900">
             {L("नगरपालिकाको नाम", "Municipality name")}
@@ -88,15 +96,15 @@ export default async function SettingsPage() {
 
         <fieldset className="gov-card p-5">
           <legend className="px-1 text-[16px] font-bold text-ink-900">
-            {L("सम्पर्क तथा लोगो", "Contact and logo")}
+            {L("सम्पर्क", "Contact")}
           </legend>
           <div className="mt-3 grid gap-4 sm:grid-cols-2">
             {field("phone", "फोन", "Phone")}
             {field("email", "इमेल", "Email")}
             {field("website", "वेबसाइट", "Website")}
-            {field("logo", "लोगोको ठेगाना", "Logo path", {
-              ne: "public फोल्डरमा राखेको फाइल, जस्तै /logo.png",
-              en: "A file placed in the public folder, e.g. /logo.png",
+            {field("logo", "लोगोको ठेगाना", "Emblem address", {
+              ne: "माथिबाट अपलोड गर्नुभयो भने यो आफैँ भरिन्छ। बाहिरी ठेगाना राख्न चाहेमा मात्र यहाँ लेख्नुहोस्।",
+              en: "Filled in for you when you upload above. Only type here to point at an image hosted elsewhere.",
             })}
           </div>
         </fieldset>
