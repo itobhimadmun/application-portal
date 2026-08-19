@@ -3,17 +3,20 @@ import "./globals.css";
 import SiteHeader from "@/components/SiteHeader";
 import SiteFooter from "@/components/SiteFooter";
 import { getLocale, translator } from "@/lib/i18n";
-import { site } from "@/lib/site";
+import { getSiteSettings } from "@/lib/settings";
 
-export const metadata: Metadata = {
-  title: {
-    default: `${site.portalNameNe} | ${site.nameNe}`,
-    template: `%s | ${site.nameNe}`,
-  },
-  description:
-    "नगरपालिकाका निवेदन, सिफारिस र फारमहरू एकै ठाउँमा खोज्नुहोस्, डाउनलोड गर्नुहोस् र प्रिन्ट गर्नुहोस्। Search, download and print every municipal application form in one place.",
-  icons: { icon: site.logo },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const site = await getSiteSettings();
+  return {
+    title: {
+      default: `${site.portalNameNe} | ${site.nameNe}`,
+      template: `%s | ${site.nameNe}`,
+    },
+    description:
+      "नगरपालिकाका निवेदन, सिफारिस र फारमहरू एकै ठाउँमा खोज्नुहोस्, डाउनलोड गर्नुहोस् र प्रिन्ट गर्नुहोस्। Search, download and print every municipal application form in one place.",
+    icons: { icon: site.logo },
+  };
+}
 
 export const viewport: Viewport = {
   width: "device-width",
