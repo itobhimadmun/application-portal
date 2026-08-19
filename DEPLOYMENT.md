@@ -151,7 +151,7 @@ Open `https://<your-project>.vercel.app/admin/login`, sign in, then:
 
 | Symptom | Fix |
 |---|---|
-| "पोर्टल सेटअप बाँकी छ / Portal setup required" | `DATABASE_URL` missing or `npm run db:setup` not run yet |
+| "पोर्टल सेटअप बाँकी छ / Portal setup required" | `DATABASE_URL` missing or unreachable. The schema applies itself on boot, so this is a connection problem, not a migration one — check the Vercel function logs for `[portal] schema check failed`. |
 | Login always fails | `AUTH_SECRET` not set, or differs between environments |
 | `permission denied to create extension` | Use Neon/Supabase (both allow `pg_trgm`), or ask your DBA to run `CREATE EXTENSION pg_trgm; CREATE EXTENSION unaccent;` |
 | Upload rejected | File type must be PDF / doc / docx / odt / rtf / xls / xlsx / ods / csv, and under the size limit |
@@ -161,5 +161,20 @@ Open `https://<your-project>.vercel.app/admin/login`, sign in, then:
 
 ## Continuous deployment
 
-Every push to `main` redeploys automatically. Schema changes go in
-`db/schema.sql` (it is written to be re-runnable) followed by `npm run db:setup`.
+Every push to `main` redeploys automatically.
+
+**Schema changes need no manual step.** Edit `db/schema.sql` — it is written to
+be re-runnable — and push. On the next deploy:
+
+1. `npm run prebuild` compiles the file into `src/lib/schema-sql.ts`, stamping
+   it with a content hash as the schema version.
+2. `src/instrumentation.ts` runs once per server cold start, before the first
+   request is served, and calls `ensureSchema()`.
+3. `ensureSchema()` compares the `schema.version` row in `settings` with the
+   embedded hash. They match on every deploy that did not touch the schema, so
+   the cost is one cheap lookup. When they differ it replays the schema under a
+   Postgres advisory lock — concurrent serverless instances cannot race — and
+   records the new version.
+
+`/api/setup` is only needed to create the *first* administrator on a brand-new
+database. Delete `SETUP_TOKEN` afterwards; the route then returns 404.
