@@ -177,3 +177,7 @@ CREATE TABLE IF NOT EXISTS login_attempts (
 );
 CREATE INDEX IF NOT EXISTS login_attempts_ip_idx    ON login_attempts (ip, created_at);
 CREATE INDEX IF NOT EXISTS login_attempts_email_idx ON login_attempts (email, created_at);
+
+-- ------------------------------------------- editable templates + settings (v3)
+ALTER TABLE application_files ADD COLUMN IF NOT EXISTS is_template     BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE application_files ADD COLUMN IF NOT EXISTS template_fields JSONB   NOT NULL DEFAULT '[]'::jsonb;

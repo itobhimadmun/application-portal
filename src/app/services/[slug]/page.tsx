@@ -51,6 +51,7 @@ export default async function ApplicationDetailPage({ params }: { params: Params
     : app.ward_numbers.map((w) => (locale === "ne" ? `वडा ${toNepaliDigits(w)}` : `Ward ${w}`)).join(", ");
   const office = pick(locale, app.office_ne, app.office_en);
   const firstPdf = app.files.find((f) => f.kind === "pdf");
+  const hasTemplate = app.files.some((f) => f.is_template && (f.template_fields?.length ?? 0) > 0);
 
   return (
     <>
@@ -92,6 +93,17 @@ export default async function ApplicationDetailPage({ params }: { params: Params
               </p>
             ) : null}
 
+            {/* The forms are what people come here for, so they lead the page. */}
+            <section id="forms" className="mt-6 scroll-mt-4 rounded-[6px] border-2 border-royal-200 bg-royal-50 p-4 sm:p-5">
+              <h2 className="section-title mb-3">{t("app.forms")}</h2>
+              <DocumentActions
+                files={app.files}
+                locale={locale}
+                slug={app.slug}
+                onlineForm={app.online_form_enabled || hasTemplate}
+              />
+            </section>
+
             {pick(locale, app.about_ne, app.about_en) ? (
               <section className="mt-8">
                 <h2 className="section-title">{t("app.about")}</h2>
@@ -114,16 +126,6 @@ export default async function ApplicationDetailPage({ params }: { params: Params
                 <StepTimeline steps={app.steps} locale={locale} />
               </section>
             ) : null}
-
-            <section id="forms" className="mt-8 scroll-mt-4">
-              <h2 className="section-title mb-3">{t("app.forms")}</h2>
-              <DocumentActions
-                files={app.files}
-                locale={locale}
-                slug={app.slug}
-                onlineForm={app.online_form_enabled}
-              />
-            </section>
 
             {firstPdf ? (
               <section className="no-print mt-8">

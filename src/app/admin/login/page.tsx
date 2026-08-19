@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import LoginForm from "@/components/admin/LoginForm";
 import { getLocale, translator } from "@/lib/i18n";
 import { getSessionUser } from "@/lib/auth";
-import { site } from "@/lib/site";
+import { getSiteSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +12,7 @@ export default async function AdminLoginPage({
 }: { searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   const locale = await getLocale();
   const t = translator(locale);
+  const site = await getSiteSettings();
   const sp = await searchParams;
   const raw = Array.isArray(sp.next) ? sp.next[0] : sp.next;
   const next = raw && raw.startsWith("/admin") ? raw : "/admin";

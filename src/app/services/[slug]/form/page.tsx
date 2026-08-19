@@ -2,9 +2,10 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import Breadcrumb from "@/components/ui/Breadcrumb";
 import OnlineForm from "@/components/OnlineForm";
+import TemplateForm from "@/components/TemplateForm";
 import { getLocale, translator, pick } from "@/lib/i18n";
 import { getApplicationBySlug } from "@/lib/queries";
-import { site } from "@/lib/site";
+import { getSiteSettings } from "@/lib/settings";
 import type { FormField } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -23,14 +24,21 @@ const DEFAULT_FIELDS: FormField[] = [
 export default async function OnlineFormPage({ params }: { params: Params }) {
   const locale = await getLocale();
   const t = translator(locale);
+  const site = await getSiteSettings();
   const { slug } = await params;
 
   const app = await getApplicationBySlug(slug);
-  if (!app || !app.online_form_enabled) notFound();
+  if (!app) notFound();
 
-  const schema = Array.isArray(app.online_form_schema) && app.online_form_schema.length
-    ? (app.online_form_schema as FormField[])
-    : DEFAULT_FIELDS;
+  // A Word template uploaded by the municipality always wins: filling it
+  // returns their real document rather than a generic layout.
+  const template = app.files.find((f) => f.is_template && (f.template_fields?.length ?? 0) > 0);
+  if (!template && !app.online_form_enabled) notFound();
+
+  const schema =
+    Array.isArray(app.online_form_schema) && app.online_form_schema.length
+      ? (app.online_form_schema as FormField[])
+      : DEFAULT_FIELDS;
 
   return (
     <>
@@ -48,26 +56,35 @@ export default async function OnlineFormPage({ params }: { params: Params }) {
           <Link href={`/services/${app.slug}`} className="btn-outline btn-sm">{t("app.viewDetails")}</Link>
         </div>
 
-        <OnlineForm
-          fields={schema}
-          locale={locale}
-          title={pick(locale, app.title_ne, app.title_en)}
-          subtitle={locale === "ne" ? app.title_en : app.title_ne}
-          header={{
-            line1: t("gov.nepal"),
-            line2: locale === "en" ? site.nameEn : site.nameNe,
-            line3: pick(locale, app.office_ne, app.office_en) || (locale === "en" ? site.addressEn : site.addressNe),
-          }}
-          footer={`${site.phone} · ${site.email}`}
-          labels={{
-            print: t("doc.print"),
-            clear: locale === "ne" ? "खाली गर्नुहोस्" : "Clear",
-            preview: t("doc.preview"),
-            fill: t("doc.fillOnline"),
-            date: locale === "ne" ? "मिति" : "Date",
-            signature: locale === "ne" ? "निवेदकको दस्तखत" : "Applicant's signature",
-          }}
-        />
+        {template ? (
+          <TemplateForm
+            fileId={template.id}
+            fields={template.template_fields}
+            locale={locale}
+            fileLabel={pick(locale, template.label_ne, template.label_en) || app.slug}
+          />
+        ) : (
+          <OnlineForm
+            fields={schema}
+            locale={locale}
+            title={pick(locale, app.title_ne, app.title_en)}
+            subtitle={locale === "ne" ? app.title_en : app.title_ne}
+            header={{
+              line1: t("gov.nepal"),
+              line2: locale === "en" ? site.nameEn : site.nameNe,
+              line3: pick(locale, app.office_ne, app.office_en) || (locale === "en" ? site.addressEn : site.addressNe),
+            }}
+            footer={`${site.phone} · ${site.email}`}
+            labels={{
+              print: t("doc.print"),
+              clear: locale === "ne" ? "खाली गर्नुहोस्" : "Clear",
+              preview: t("doc.preview"),
+              fill: t("doc.fillOnline"),
+              date: locale === "ne" ? "मिति" : "Date",
+              signature: locale === "ne" ? "निवेदकको दस्तखत" : "Applicant's signature",
+            }}
+          />
+        )}
       </div>
     </>
   );

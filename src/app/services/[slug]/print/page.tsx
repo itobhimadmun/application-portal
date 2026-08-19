@@ -4,7 +4,7 @@ import PrintButton from "@/components/PrintButton";
 import { getLocale, translator, pick } from "@/lib/i18n";
 import { toNepaliDigits } from "@/lib/translit";
 import { getApplicationBySlug } from "@/lib/queries";
-import { site } from "@/lib/site";
+import { getSiteSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -15,6 +15,7 @@ export default async function PrintPage({ params }: { params: Params }) {
   const locale = await getLocale();
   const t = translator(locale);
   const { slug } = await params;
+  const site = await getSiteSettings();
 
   const app = await getApplicationBySlug(slug);
   if (!app) notFound();
