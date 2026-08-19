@@ -19,7 +19,7 @@ export default function ActionForm({
       {state.error ? <p className="alert-danger" role="alert">{state.error}</p> : null}
       {state.ok ? <p className="alert-success" role="status">{state.message}</p> : null}
       {children}
-      <button type="submit" disabled={pending} className="btn-primary btn-sm">
+      <button type="submit" disabled={pending} className="btn-primary">
         {pending ? "…" : submitLabel}
       </button>
     </form>
