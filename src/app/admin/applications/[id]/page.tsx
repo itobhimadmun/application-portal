@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import ApplicationEditor from "@/components/admin/ApplicationEditor";
 import ConfirmButton from "@/components/admin/ConfirmButton";
 import FileUploadForm from "@/components/admin/FileUploadForm";
+import TemplateFieldsEditor from "@/components/admin/TemplateFieldsEditor";
 import SetupNotice from "@/components/SetupNotice";
 import { getLocale, translator, pick } from "@/lib/i18n";
 import { getApplicationById, getCategories, getSections, getWards } from "@/lib/queries";
@@ -108,6 +109,20 @@ export default async function EditApplicationPage({
         ) : (
           <p className="mt-2 text-[14.5px] text-ink-500">{t("app.noForms")}</p>
         )}
+
+        {/* Word templates: name the {{placeholders}} the file contains. */}
+        {application.files
+          .filter((file) => file.kind === "word")
+          .map((file) => (
+            <TemplateFieldsEditor
+              key={file.id}
+              fileId={file.id}
+              applicationId={application.id}
+              fileName={pick(locale, file.label_ne, file.label_en) || file.original_name}
+              initial={file.template_fields ?? []}
+              locale={locale}
+            />
+          ))}
 
         <div className="mt-5 border-t border-line-100 pt-4">
           <FileUploadForm
