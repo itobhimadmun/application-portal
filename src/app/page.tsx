@@ -1,8 +1,8 @@
 import Link from "next/link";
+import ApplicationCard from "@/components/ApplicationCard";
 import SearchBox from "@/components/SearchBox";
-import ServiceCard from "@/components/ServiceCard";
 import SetupNotice from "@/components/SetupNotice";
-import { CATEGORY_ICONS, IconChevron, IconBuilding, IconMap, IconCheck } from "@/components/ui/Icons";
+import { IconChevron } from "@/components/ui/Icons";
 import { getLocale, translator, pick } from "@/lib/i18n";
 import { toNepaliDigits } from "@/lib/translit";
 import {
@@ -16,14 +16,23 @@ const FALLBACK_POPULAR = [
   "नागरिकता सिफारिस", "जन्म दर्ता", "बसोबास सिफारिस", "व्यवसाय दर्ता", "घरबाटो सिफारिस", "नाता प्रमाणित",
 ];
 
+/**
+ * The front of an application library.
+ *
+ * Search first, then the forms themselves — each one already carrying the
+ * buttons that view, download and fill it. The ways of narrowing down
+ * (category, section, ward) are chips beneath the forms rather than sections
+ * of their own, because they are a route to a form, not a destination.
+ */
 export default async function HomePage() {
   const locale = await getLocale();
   const t = translator(locale);
+  const L = (ne: string, en: string) => (locale === "en" ? en : ne);
 
   let data;
   try {
     const [categories, sections, wards, recent, total, popular] = await Promise.all([
-      getCategories(), getSections(), getWards(), getRecentApplications(6),
+      getCategories(), getSections(), getWards(), getRecentApplications(9),
       getPublishedCount(), getPopularSearches(6),
     ]);
     data = { categories, sections, wards, recent, total, popular };
@@ -32,21 +41,19 @@ export default async function HomePage() {
   }
 
   const popular = data.popular.length >= 3 ? data.popular : FALLBACK_POPULAR;
-  const num = (n: number) => (locale === "ne" ? toNepaliDigits(n) : String(n));
+  const count = locale === "ne" ? toNepaliDigits(data.total) : String(data.total);
 
-  const guideSteps = [
-    t("guide.step1"), t("guide.step2"), t("guide.step3"),
-    t("guide.step4"), t("guide.step5"), t("guide.step6"),
-  ];
+  const chip =
+    "rounded-full border border-line-200 bg-white px-3 py-1.5 text-[13.5px] text-ink-700 hover:border-royal-600 hover:text-royal-600";
 
   return (
     <>
-      {/* ------------------------------------------------------------ hero */}
+      {/* ------------------------------------------------------------ search */}
       <section className="border-b border-line-200 bg-linear-to-b from-royal-50 to-white">
-        <div className="gov-container py-10 sm:py-14">
+        <div className="gov-container py-9 sm:py-12">
           <div className="mx-auto max-w-3xl text-center">
             <h1 className="page-title">{t("home.heroTitle")}</h1>
-            <p className="mx-auto mt-3 max-w-2xl text-[15.5px] text-ink-700 sm:text-[17px]">
+            <p className="mx-auto mt-2.5 max-w-2xl text-[15.5px] text-ink-700 sm:text-[17px]">
               {t("home.heroSubtitle")}
             </p>
 
@@ -61,143 +68,72 @@ export default async function HomePage() {
             <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
               <span className="text-[13.5px] font-semibold text-ink-500">{t("home.popular")}:</span>
               {popular.map((term) => (
-                <Link
-                  key={term}
-                  href={`/services?q=${encodeURIComponent(term)}`}
-                  className="rounded-full border border-line-200 bg-white px-3 py-1 text-[13.5px] text-ink-700 hover:border-royal-600 hover:text-royal-600"
-                >
+                <Link key={term} href={`/services?q=${encodeURIComponent(term)}`} className={chip}>
                   {term}
                 </Link>
               ))}
             </div>
-
-            <p className="mt-5 text-[13.5px] text-ink-500">
-              {num(data.total)} {t("home.totalServices")}
-            </p>
           </div>
         </div>
       </section>
 
-      {/* ------------------------------------------------------ categories */}
-      <section id="categories" className="gov-container scroll-mt-4 py-10">
-        <div className="mb-4 flex items-end justify-between gap-3">
-          <h2 className="section-title">{t("home.browseCategory")}</h2>
-          <Link href="/services" className="btn-ghost btn-sm">{t("home.viewAll")}</Link>
-        </div>
-        <ul className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-          {data.categories.map((c) => {
-            const Icon = CATEGORY_ICONS[c.icon] ?? CATEGORY_ICONS.doc;
-            return (
-              <li key={c.id}>
-                <Link
-                  href={`/services?category=${c.slug}`}
-                  className="gov-card flex h-full flex-col items-start gap-2 p-4 transition-colors hover:border-royal-600 hover:bg-royal-50"
-                >
-                  <span className="flex h-9 w-9 items-center justify-center rounded-[6px] bg-royal-50 text-royal-600">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <span className="text-[15px] font-semibold leading-snug text-ink-900">
-                    {pick(locale, c.name_ne, c.name_en)}
-                  </span>
-                </Link>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
-
-      {/* -------------------------------------------------------- sections */}
-      <section id="sections" className="border-y border-line-200 bg-surface-50 py-10">
-        <div className="gov-container scroll-mt-4">
-          <h2 className="section-title mb-4">{t("home.browseSection")}</h2>
-          <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {data.sections.map((s) => (
-              <li key={s.id}>
-                <Link
-                  href={`/services?section=${s.slug}`}
-                  className="gov-card flex h-full items-start gap-3 p-4 hover:border-royal-600"
-                >
-                  <IconBuilding className="mt-0.5 h-5 w-5 shrink-0 text-royal-600" />
-                  <span>
-                    <span className="block text-[15.5px] font-semibold text-ink-900">
-                      {pick(locale, s.name_ne, s.name_en)}
-                    </span>
-                    {pick(locale, s.description_ne, s.description_en) ? (
-                      <span className="mt-0.5 block text-[13.5px] text-ink-500">
-                        {pick(locale, s.description_ne, s.description_en)}
-                      </span>
-                    ) : null}
-                  </span>
-                </Link>
-              </li>
-            ))}
-          </ul>
-        </div>
-      </section>
-
-      {/* ----------------------------------------------------------- wards */}
-      <section id="wards" className="gov-container scroll-mt-4 py-10">
-        <h2 className="section-title mb-4">{t("home.browseWard")}</h2>
-        <ul className="flex flex-wrap gap-2">
-          <li>
-            <Link href="/services" className="btn-outline btn-sm">
-              <IconMap className="h-4 w-4" /> {t("filter.allWards")}
-            </Link>
-          </li>
-          {data.wards.map((w) => (
-            <li key={w.id}>
-              <Link href={`/services?ward=${w.number}`} className="btn-outline btn-sm">
-                {locale === "ne" ? `वडा ${toNepaliDigits(w.number)}` : `Ward ${w.number}`}
-              </Link>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {/* ------------------------------------------------------- how to use */}
-      <section className="border-y border-line-200 bg-royal-800 py-10 text-white">
-        <div className="gov-container">
-          <h2 className="text-[20px] font-bold sm:text-[22px]">{t("home.howToUse")}</h2>
-          <ol className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {guideSteps.map((step, i) => (
-              <li key={i} className="flex items-start gap-3 rounded-[6px] bg-royal-700/60 p-4">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white text-[14px] font-bold text-royal-700">
-                  {locale === "ne" ? toNepaliDigits(i + 1) : i + 1}
-                </span>
-                <span className="text-[15px] leading-snug">{step}</span>
-              </li>
-            ))}
-          </ol>
-          <Link href="/guide" className="btn-crimson mt-5 inline-flex">
-            {t("nav.guide")} <IconChevron className="h-4 w-4" />
-          </Link>
-        </div>
-      </section>
-
-      {/* ---------------------------------------------------------- recent */}
-      <section className="gov-container py-10">
-        <div className="mb-4 flex items-end justify-between gap-3">
-          <h2 className="section-title">{t("home.recent")}</h2>
-          <Link href="/services" className="btn-ghost btn-sm">
+      {/* ------------------------------------------------------ the forms */}
+      <section className="gov-container py-8 sm:py-10">
+        <div className="mb-5 flex flex-wrap items-end justify-between gap-3">
+          <div>
+            <h2 className="section-title">{t("home.recent")}</h2>
+            <p className="mt-0.5 text-[13.5px] text-ink-500">
+              {count} {t("home.totalServices")}
+            </p>
+          </div>
+          <Link href="/services" className="btn-secondary btn-sm">
             {t("home.viewAll")} <IconChevron className="h-4 w-4" />
           </Link>
         </div>
+
         {data.recent.length ? (
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {data.recent.map((app) => (
-              <li key={app.id}><ServiceCard app={app} locale={locale} /></li>
+              <li key={app.id}><ApplicationCard app={app} locale={locale} /></li>
             ))}
           </ul>
         ) : (
-          <div className="alert-info">
-            <p className="flex items-center gap-2">
-              <IconCheck className="h-5 w-5" />
-              {locale === "ne"
-                ? "अहिलेसम्म कुनै सेवा प्रकाशित गरिएको छैन। प्रशासक लगइन गरेर निवेदन थप्नुहोस्।"
-                : "No services published yet. Sign in as an administrator to add applications."}
-            </p>
-          </div>
+          <p className="alert-info">
+            {L(
+              "अहिलेसम्म कुनै निवेदन प्रकाशित गरिएको छैन।",
+              "No applications have been published yet."
+            )}
+          </p>
         )}
+      </section>
+
+      {/* --------------------------------------------------- ways to narrow */}
+      <section className="border-t border-line-200 bg-surface-50 py-8">
+        <div className="gov-container space-y-6">
+          {[
+            { title: t("home.browseCategory"), items: data.categories.map((c) => ({ key: c.id, href: `/services?category=${c.slug}`, label: pick(locale, c.name_ne, c.name_en) })) },
+            { title: t("home.browseSection"), items: data.sections.map((s) => ({ key: s.id, href: `/services?section=${s.slug}`, label: pick(locale, s.name_ne, s.name_en) })) },
+            {
+              title: t("home.browseWard"),
+              items: data.wards.map((w) => ({
+                key: w.id,
+                href: `/services?ward=${w.number}`,
+                label: locale === "ne" ? `वडा ${toNepaliDigits(w.number)}` : `Ward ${w.number}`,
+              })),
+            },
+          ].filter((group) => group.items.length).map((group) => (
+            <div key={group.title}>
+              <h2 className="mb-2.5 text-[15px] font-bold text-ink-700">{group.title}</h2>
+              <ul className="flex flex-wrap gap-2">
+                {group.items.map((item) => (
+                  <li key={item.key}>
+                    <Link href={item.href} className={chip}>{item.label}</Link>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ))}
+        </div>
       </section>
     </>
   );

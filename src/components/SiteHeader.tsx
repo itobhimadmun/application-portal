@@ -14,17 +14,15 @@ export default async function SiteHeader() {
   const site = await getSiteSettings();
   const user = await getSessionUser();
 
+  // Everything in the menu leads to a form. Category, section and ward are
+  // filters on the library rather than places of their own.
   const nav = [
     { href: "/", label: t("nav.home") },
     { href: "/services", label: t("nav.services") },
-    { href: "/#categories", label: t("nav.categories") },
-    { href: "/#sections", label: t("nav.sections") },
-    { href: "/#wards", label: t("nav.wards") },
-    { href: "/guide", label: t("nav.guide") },
   ];
 
   return (
-    <header className="no-print">
+    <header className="no-print" data-print-hide>
       {/* Signed-in staff keep a way back to the dashboard from every public page. */}
       {user ? (
         <div className="bg-ink-900 text-white">

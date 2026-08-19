@@ -4,24 +4,21 @@ import { slugify } from "./slug";
 
 /**
  * The starter library: categories, sections, wards and eight realistic sample
- * services. Shared by `npm run db:seed` and the one-time /api/setup endpoint so
- * both paths produce byte-identical content.
+ * applications. Shared by `npm run db:seed` and the one-time /api/setup
+ * endpoint so both paths produce identical content.
+ *
+ * None of this text is displayed — an application page shows the form and
+ * nothing else. It exists so that search has something to match on before any
+ * real forms have been uploaded.
  */
-
-type Step = { ne: string; en: string; dne?: string; den?: string };
-type Doc = { ne: string; en: string; optional?: boolean };
 
 type Seed = {
   title_ne: string; title_en: string;
   description_ne: string; description_en: string;
+  /** Long-form context. Search-only, like everything else here. */
   about_ne: string; about_en: string;
   category: string; section: string;
-  office_ne: string; office_en: string;
-  fee_ne: string; fee_en: string;
-  duration_ne: string; duration_en: string;
   keywords_ne: string[]; keywords_en: string[]; aliases: string[];
-  steps: Step[]; docs: Doc[];
-  online?: boolean;
 };
 
 export const CATEGORIES = [
@@ -59,27 +56,9 @@ export const SERVICES: Seed[] = [
     about_ne: "१६ वर्ष पूरा भएका नेपाली नागरिकले नागरिकता प्रमाणपत्र लिन वडा कार्यालयबाट सिफारिस लिनुपर्छ। यसै सिफारिसका आधारमा जिल्ला प्रशासन कार्यालयले नागरिकता जारी गर्दछ।",
     about_en: "Nepali citizens who have completed 16 years of age need a ward recommendation before the District Administration Office issues a citizenship certificate.",
     category: "sifaris", section: "prasasan-shakha",
-    office_ne: "सम्बन्धित वडा कार्यालय", office_en: "Relevant Ward Office",
-    fee_ne: "रू. १००", fee_en: "NPR 100",
-    duration_ne: "सोही दिन", duration_en: "Same day",
     keywords_ne: ["नागरिकता", "सिफारिस", "नागरिकता सिफारिस", "प्रमाणपत्र", "वंशज"],
     keywords_en: ["citizenship", "recommendation", "certificate", "nagarikta", "sifaris"],
     aliases: ["नागरिकताको सिफारिस", "citizenship sifaris", "nagarikta sifaris"],
-    steps: [
-      { ne: "आवश्यक कागजात तयार गर्नुहोस्", en: "Prepare the required documents", dne: "जन्मदर्ता, बाबु/आमाको नागरिकता र सक्कल प्रति साथै राख्नुहोस्।", den: "Bring the birth certificate, parents' citizenship and the originals." },
-      { ne: "निवेदन फारम भर्नुहोस्", en: "Fill in the application form", dne: "यसै पृष्ठबाट फारम डाउनलोड गरी वा अनलाइन भरी प्रिन्ट गर्नुहोस्।", den: "Download the form from this page or fill it online and print it." },
-      { ne: "वडा कार्यालयमा पेश गर्नुहोस्", en: "Submit at the ward office", dne: "निवेदकसहित सक्कल कागजात लिई उपस्थित हुनुपर्छ।", den: "The applicant must attend in person with the original documents." },
-      { ne: "वडा सचिवबाट जाँच तथा सिफारिस", en: "Verification and recommendation by the ward secretary" },
-      { ne: "सिफारिस पत्र प्राप्त गर्नुहोस्", en: "Collect the recommendation letter", dne: "जिल्ला प्रशासन कार्यालयमा बुझाउनुहोस्।", den: "Submit it to the District Administration Office." },
-    ],
-    docs: [
-      { ne: "जन्म दर्ता प्रमाणपत्रको प्रतिलिपि", en: "Copy of the birth registration certificate" },
-      { ne: "बाबु र आमाको नागरिकता प्रमाणपत्रको प्रतिलिपि", en: "Copy of both parents' citizenship certificates" },
-      { ne: "विवाह दर्ता प्रमाणपत्र (विवाहित महिलाका हकमा)", en: "Marriage registration certificate (for married women)", optional: true },
-      { ne: "चालु आर्थिक वर्षको सम्पत्ति कर तिरेको रसिद", en: "Property tax receipt for the current fiscal year" },
-      { ne: "पासपोर्ट साइजको फोटो २ प्रति", en: "Two passport-size photographs" },
-    ],
-    online: true,
   },
   {
     title_ne: "जन्म दर्ता",
@@ -89,26 +68,9 @@ export const SERVICES: Seed[] = [
     about_ne: "व्यक्तिगत घटना दर्ता ऐन अनुसार जन्म भएको ३५ दिनभित्र स्थानीय पञ्जिकाधिकारी समक्ष जन्म दर्ता गराउनुपर्छ। ढिलो भएमा जरिवाना लाग्न सक्छ।",
     about_en: "Under the Vital Registration Act a birth must be registered with the local registrar within 35 days. Late registration may attract a fine.",
     category: "darta", section: "panjikaran-shakha",
-    office_ne: "सम्बन्धित वडा कार्यालय (पञ्जिकाधिकारी)", office_en: "Ward Office (Local Registrar)",
-    fee_ne: "३५ दिनभित्र नि:शुल्क", fee_en: "Free within 35 days",
-    duration_ne: "सोही दिन", duration_en: "Same day",
     keywords_ne: ["जन्म", "जन्म दर्ता", "बच्चा", "व्यक्तिगत घटना", "पञ्जीकरण"],
     keywords_en: ["birth", "birth registration", "child", "vital registration", "janma darta"],
     aliases: ["जन्मदर्ता", "janma darta", "birth certificate"],
-    steps: [
-      { ne: "सूचक व्यक्ति निर्धारण गर्नुहोस्", en: "Identify the informant", dne: "सामान्यतया बाबु, आमा वा परिवारको मुख्य व्यक्ति सूचक हुन्छन्।", den: "Usually the father, mother or head of the household." },
-      { ne: "निवेदन फारम भर्नुहोस्", en: "Complete the registration form" },
-      { ne: "वडा कार्यालयमा पेश गर्नुहोस्", en: "Submit it at the ward office" },
-      { ne: "पञ्जिकाधिकारीबाट दर्ता", en: "Registration by the local registrar" },
-      { ne: "जन्म दर्ता प्रमाणपत्र प्राप्त गर्नुहोस्", en: "Collect the birth registration certificate" },
-    ],
-    docs: [
-      { ne: "अस्पतालको जन्म सम्बन्धी कागजात वा जन्म भएको प्रमाण", en: "Hospital birth record or other proof of birth" },
-      { ne: "बाबु र आमाको नागरिकता प्रमाणपत्रको प्रतिलिपि", en: "Copy of both parents' citizenship certificates" },
-      { ne: "विवाह दर्ता प्रमाणपत्रको प्रतिलिपि", en: "Copy of the marriage registration certificate", optional: true },
-      { ne: "सूचक व्यक्तिको नागरिकता प्रमाणपत्र", en: "Citizenship certificate of the informant" },
-    ],
-    online: true,
   },
   {
     title_ne: "बसोबास सिफारिस",
@@ -118,24 +80,9 @@ export const SERVICES: Seed[] = [
     about_ne: "बैंक खाता, विद्यालय भर्ना, राहदानी वा अन्य प्रयोजनका लागि बसोबास प्रमाणित गर्नुपर्दा यो सिफारिस लिइन्छ।",
     about_en: "Required when residence must be proven for a bank account, school admission, passport or similar purposes.",
     category: "sifaris", section: "prasasan-shakha",
-    office_ne: "सम्बन्धित वडा कार्यालय", office_en: "Relevant Ward Office",
-    fee_ne: "रू. १००", fee_en: "NPR 100",
-    duration_ne: "सोही दिन", duration_en: "Same day",
     keywords_ne: ["बसोबास", "बसाई", "सिफारिस", "ठेगाना", "स्थायी बसोबास"],
     keywords_en: ["residence", "domicile", "address", "basobas", "sifaris", "residency"],
     aliases: ["बसोबास प्रमाणित", "basobas sifaris", "residence certificate"],
-    steps: [
-      { ne: "आवश्यक कागजात तयार गर्नुहोस्", en: "Prepare the required documents" },
-      { ne: "निवेदन फारम भर्नुहोस्", en: "Fill in the application form" },
-      { ne: "वडा कार्यालयमा पेश गर्नुहोस्", en: "Submit it at the ward office" },
-      { ne: "स्थलगत/अभिलेख जाँच", en: "Record or field verification" },
-      { ne: "सिफारिस पत्र प्राप्त गर्नुहोस्", en: "Collect the recommendation letter" },
-    ],
-    docs: [
-      { ne: "निवेदकको नागरिकता प्रमाणपत्रको प्रतिलिपि", en: "Copy of the applicant's citizenship certificate" },
-      { ne: "जग्गा धनी प्रमाण पुर्जा वा घरबहाल सम्झौता", en: "Land ownership certificate or rental agreement" },
-      { ne: "चालु आर्थिक वर्षको मालपोत/सम्पत्ति कर रसिद", en: "Current fiscal year land or property tax receipt" },
-    ],
   },
   {
     title_ne: "घरबाटो सिफारिस",
@@ -145,25 +92,9 @@ export const SERVICES: Seed[] = [
     about_ne: "बैंक धितो, जग्गा खरिद-बिक्री, घर नक्सा पास लगायतका काममा जग्गासम्म बाटो रहेको प्रमाणित गर्न यो सिफारिस आवश्यक पर्दछ।",
     about_en: "Needed for bank collateral, land transactions and building permits to certify that the plot is served by a road.",
     category: "sifaris", section: "yojana-shakha",
-    office_ne: "सम्बन्धित वडा कार्यालय", office_en: "Relevant Ward Office",
-    fee_ne: "रू. ५०० सम्म (क्षेत्र अनुसार)", fee_en: "Up to NPR 500 depending on the area",
-    duration_ne: "१–३ कार्य दिन", duration_en: "1–3 working days",
     keywords_ne: ["घरबाटो", "घर बाटो", "बाटो", "सिफारिस", "पहुँच मार्ग", "जग्गा"],
     keywords_en: ["house road", "access road", "road access", "gharbato", "ghar bato", "sifaris"],
     aliases: ["घरबाटो प्रमाणित", "gharbato sifaris", "बाटो सिफारिस", "road recommendation"],
-    steps: [
-      { ne: "आवश्यक कागजात तयार गर्नुहोस्", en: "Prepare the required documents" },
-      { ne: "निवेदन फारम भरी पेश गर्नुहोस्", en: "Fill in and submit the application" },
-      { ne: "प्राविधिकबाट स्थलगत निरीक्षण", en: "Site inspection by a technician" },
-      { ne: "नापी/प्राविधिक प्रतिवेदन तयारी", en: "Technical report prepared" },
-      { ne: "सिफारिस पत्र प्राप्त गर्नुहोस्", en: "Collect the recommendation letter" },
-    ],
-    docs: [
-      { ne: "जग्गा धनी प्रमाण पुर्जाको प्रतिलिपि", en: "Copy of the land ownership certificate" },
-      { ne: "नापी नक्सा (ट्रेस नक्सा)", en: "Survey (trace) map" },
-      { ne: "चालु आर्थिक वर्षको मालपोत तिरेको रसिद", en: "Current fiscal year land revenue receipt" },
-      { ne: "निवेदकको नागरिकता प्रमाणपत्रको प्रतिलिपि", en: "Copy of the applicant's citizenship certificate" },
-    ],
   },
   {
     title_ne: "व्यवसाय दर्ता",
@@ -173,26 +104,9 @@ export const SERVICES: Seed[] = [
     about_ne: "नगरपालिका क्षेत्रभित्र व्यवसाय सञ्चालन गर्नुअघि राजस्व शाखामा दर्ता गराई व्यवसाय दर्ता प्रमाणपत्र लिनुपर्छ। प्रत्येक आर्थिक वर्ष नवीकरण गर्नुपर्दछ।",
     about_en: "Before operating a business in the municipality it must be registered with the Revenue Section. Registration is renewed each fiscal year.",
     category: "byabasaya", section: "rajaswa-shakha",
-    office_ne: "राजस्व शाखा, नगर कार्यपालिकाको कार्यालय", office_en: "Revenue Section, Municipal Executive Office",
-    fee_ne: "व्यवसायको प्रकृति अनुसार", fee_en: "Depends on the type of business",
-    duration_ne: "१–२ कार्य दिन", duration_en: "1–2 working days",
     keywords_ne: ["व्यवसाय", "व्यापार", "दर्ता", "पसल", "उद्योग", "फर्म"],
     keywords_en: ["business", "registration", "firm", "shop", "trade licence", "byabasaya darta"],
     aliases: ["व्यवसाय दर्ता प्रमाणपत्र", "business licence", "byapar darta"],
-    steps: [
-      { ne: "व्यवसायको प्रकृति र स्थान निर्धारण गर्नुहोस्", en: "Decide the nature and location of the business" },
-      { ne: "निवेदन फारम भर्नुहोस्", en: "Fill in the registration form" },
-      { ne: "राजस्व शाखामा पेश गर्नुहोस्", en: "Submit it to the Revenue Section" },
-      { ne: "दस्तुर बुझाउनुहोस्", en: "Pay the applicable fee" },
-      { ne: "व्यवसाय दर्ता प्रमाणपत्र प्राप्त गर्नुहोस्", en: "Collect the business registration certificate" },
-    ],
-    docs: [
-      { ne: "निवेदकको नागरिकता प्रमाणपत्रको प्रतिलिपि", en: "Copy of the applicant's citizenship certificate" },
-      { ne: "घरबहाल सम्झौता वा जग्गा धनी प्रमाण पुर्जा", en: "Rental agreement or land ownership certificate" },
-      { ne: "घरबहाल कर तिरेको प्रमाण", en: "Proof of house-rent tax payment", optional: true },
-      { ne: "पासपोर्ट साइजको फोटो २ प्रति", en: "Two passport-size photographs" },
-      { ne: "स्थायी लेखा नम्बर (PAN) प्रमाणपत्र", en: "Permanent Account Number (PAN) certificate", optional: true },
-    ],
   },
   {
     title_ne: "चारकिल्ला प्रमाणित सिफारिस",
@@ -202,25 +116,9 @@ export const SERVICES: Seed[] = [
     about_ne: "जग्गा खरिद-बिक्री, धितो वा नामसारीका लागि जग्गाको चारकिल्ला प्रमाणित गर्नुपर्दा वडा कार्यालयबाट यो सिफारिस लिइन्छ।",
     about_en: "Used for land transactions, mortgages and ownership transfers where the parcel boundaries must be certified.",
     category: "sifaris", section: "prasasan-shakha",
-    office_ne: "सम्बन्धित वडा कार्यालय", office_en: "Relevant Ward Office",
-    fee_ne: "रू. ३००", fee_en: "NPR 300",
-    duration_ne: "१–२ कार्य दिन", duration_en: "1–2 working days",
     keywords_ne: ["चारकिल्ला", "सिमाना", "जग्गा", "सिफारिस", "प्रमाणित"],
     keywords_en: ["charkilla", "four boundary", "land boundary", "sifaris", "certification"],
     aliases: ["चार किल्ला", "charkilla sifaris", "boundary certificate"],
-    steps: [
-      { ne: "आवश्यक कागजात तयार गर्नुहोस्", en: "Prepare the required documents" },
-      { ne: "निवेदन पेश गर्नुहोस्", en: "Submit the application" },
-      { ne: "छिमेकी जग्गाधनीको रोहबरमा स्थलगत जाँच", en: "Field verification in the presence of neighbouring landowners" },
-      { ne: "वडा कार्यालयबाट प्रमाणित", en: "Certification by the ward office" },
-      { ne: "सिफारिस पत्र प्राप्त गर्नुहोस्", en: "Collect the certificate" },
-    ],
-    docs: [
-      { ne: "जग्गा धनी प्रमाण पुर्जाको प्रतिलिपि", en: "Copy of the land ownership certificate" },
-      { ne: "नापी नक्सा", en: "Survey map" },
-      { ne: "मालपोत तिरेको रसिद", en: "Land revenue receipt" },
-      { ne: "छिमेकी जग्गाधनीको नागरिकताको प्रतिलिपि", en: "Copies of neighbouring landowners' citizenship certificates", optional: true },
-    ],
   },
   {
     title_ne: "नाता प्रमाणित",
@@ -230,25 +128,9 @@ export const SERVICES: Seed[] = [
     about_ne: "अंश, हकदावी, बैंक, बीमा, राहदानी वा वैदेशिक प्रयोजनका लागि नाता प्रमाणित गर्नुपर्दा यो सेवा प्रयोग हुन्छ।",
     about_en: "Used when a family relationship must be certified for inheritance, banking, insurance, passport or foreign purposes.",
     category: "sifaris", section: "prasasan-shakha",
-    office_ne: "सम्बन्धित वडा कार्यालय", office_en: "Relevant Ward Office",
-    fee_ne: "रू. २००", fee_en: "NPR 200",
-    duration_ne: "सोही दिन", duration_en: "Same day",
     keywords_ne: ["नाता", "नाता प्रमाणित", "सम्बन्ध", "परिवार", "सिफारिस"],
     keywords_en: ["relationship", "naata", "family relation", "kinship", "certification"],
     aliases: ["नाता कायम", "naata pramanit", "relationship certificate"],
-    steps: [
-      { ne: "सम्बन्धित सबै व्यक्तिको कागजात तयार गर्नुहोस्", en: "Collect documents for everyone involved" },
-      { ne: "निवेदन फारम भर्नुहोस्", en: "Fill in the application form" },
-      { ne: "सबै सम्बन्धित व्यक्ति सहित वडा कार्यालयमा उपस्थित हुनुहोस्", en: "Attend the ward office together with all related persons" },
-      { ne: "अभिलेख जाँच तथा प्रमाणित", en: "Record verification and certification" },
-      { ne: "नाता प्रमाणित पत्र प्राप्त गर्नुहोस्", en: "Collect the relationship certificate" },
-    ],
-    docs: [
-      { ne: "सम्बन्धित सबैको नागरिकता प्रमाणपत्रको प्रतिलिपि", en: "Copies of citizenship certificates of all related persons" },
-      { ne: "जन्म दर्ता वा विवाह दर्ता प्रमाणपत्र", en: "Birth or marriage registration certificate" },
-      { ne: "मृत्यु दर्ता प्रमाणपत्र (मृतकसँगको नाताका हकमा)", en: "Death registration certificate (when the relation is to a deceased person)", optional: true },
-      { ne: "पासपोर्ट साइजको फोटो", en: "Passport-size photographs" },
-    ],
   },
   {
     title_ne: "घर नक्सा पास सम्बन्धी निवेदन",
@@ -258,28 +140,9 @@ export const SERVICES: Seed[] = [
     about_ne: "भवन ऐन तथा नगरपालिकाको भवन निर्माण मापदण्ड अनुसार घर निर्माण गर्नुअघि नक्सा पास गराउनु अनिवार्य छ। स्वीकृतिपछि मात्र निर्माण सुरु गर्न पाइन्छ।",
     about_en: "Under the building code and municipal standards, a drawing must be approved before construction starts.",
     category: "nirman", section: "yojana-shakha",
-    office_ne: "योजना तथा प्राविधिक शाखा", office_en: "Planning & Technical Section",
-    fee_ne: "क्षेत्रफल तथा प्रयोजन अनुसार", fee_en: "Based on floor area and use",
-    duration_ne: "१५–३५ कार्य दिन", duration_en: "15–35 working days",
     keywords_ne: ["घर नक्सा", "नक्सा पास", "घर बनाउने", "निर्माण", "भवन", "नक्सा"],
     keywords_en: ["building permit", "house map", "map approval", "construction", "naksa pass", "ghar banaune"],
     aliases: ["नक्शा पास", "naksa pass", "building approval", "घर बनाउन अनुमति"],
-    steps: [
-      { ne: "प्राविधिकबाट नक्सा तयार गराउनुहोस्", en: "Have the drawing prepared by a licensed technician" },
-      { ne: "निवेदन तथा नक्सा दर्ता गर्नुहोस्", en: "Register the application together with the drawing" },
-      { ne: "प्राविधिक जाँच तथा स्थलगत निरीक्षण", en: "Technical review and site inspection" },
-      { ne: "दस्तुर बुझाउनुहोस्", en: "Pay the assessed fee" },
-      { ne: "नक्सा स्वीकृति प्राप्त गर्नुहोस्", en: "Receive the approved drawing" },
-      { ne: "निर्माण सम्पन्न भएपछि सम्पन्न प्रमाणपत्र लिनुहोस्", en: "Obtain the completion certificate after construction" },
-    ],
-    docs: [
-      { ne: "जग्गा धनी प्रमाण पुर्जाको प्रतिलिपि", en: "Copy of the land ownership certificate" },
-      { ne: "नापी नक्सा (ट्रेस नक्सा)", en: "Survey (trace) map" },
-      { ne: "इजाजतप्राप्त प्राविधिकले तयार गरेको भवनको नक्सा", en: "Building drawing prepared by a licensed technician" },
-      { ne: "घरबाटो सिफारिस", en: "House-road (access) recommendation" },
-      { ne: "चालु आर्थिक वर्षको मालपोत तिरेको रसिद", en: "Current fiscal year land revenue receipt" },
-      { ne: "निवेदकको नागरिकता प्रमाणपत्रको प्रतिलिपि", en: "Copy of the applicant's citizenship certificate" },
-    ],
   },
 ];
 
@@ -312,48 +175,29 @@ export async function seedSampleLibrary(): Promise<string> {
 
     const searchIndex = buildSearchIndex([
       service.title_ne, service.title_en, service.description_ne, service.description_en,
-      service.about_ne, service.about_en, service.office_ne, service.office_en,
+      service.about_ne, service.about_en,
       ...service.keywords_ne, ...service.keywords_en, ...service.aliases,
     ]);
 
-    const [row] = await sql<{ id: number }[]>`
+    await sql`
       INSERT INTO applications (
-        slug, title_ne, title_en, description_ne, description_en, about_ne, about_en,
-        category_id, section_id, all_wards, office_ne, office_en, fee_ne, fee_en,
-        duration_ne, duration_en, keywords_ne, keywords_en, aliases, search_index,
-        status, is_sample, online_form_enabled, published_at
+        slug, title_ne, title_en, description_ne, description_en,
+        category_id, section_id, all_wards,
+        keywords_ne, keywords_en, aliases, search_index,
+        status, is_sample, published_at
       ) VALUES (
         ${slug}, ${service.title_ne}, ${service.title_en}, ${service.description_ne},
-        ${service.description_en}, ${service.about_ne}, ${service.about_en},
-        ${category?.id ?? null}, ${section?.id ?? null}, TRUE,
-        ${service.office_ne}, ${service.office_en}, ${service.fee_ne}, ${service.fee_en},
-        ${service.duration_ne}, ${service.duration_en},
+        ${service.description_en}, ${category?.id ?? null}, ${section?.id ?? null}, TRUE,
         ${service.keywords_ne}, ${service.keywords_en}, ${service.aliases}, ${searchIndex},
-        'published', TRUE, ${Boolean(service.online)}, now()
+        'published', TRUE, now()
       )
       ON CONFLICT (slug) DO UPDATE SET
         title_ne = EXCLUDED.title_ne, title_en = EXCLUDED.title_en,
         description_ne = EXCLUDED.description_ne, description_en = EXCLUDED.description_en,
-        about_ne = EXCLUDED.about_ne, about_en = EXCLUDED.about_en,
         category_id = EXCLUDED.category_id, section_id = EXCLUDED.section_id,
         keywords_ne = EXCLUDED.keywords_ne, keywords_en = EXCLUDED.keywords_en,
         aliases = EXCLUDED.aliases, search_index = EXCLUDED.search_index,
-        updated_at = now()
-      RETURNING id`;
-
-    await sql`DELETE FROM application_steps WHERE application_id = ${row.id}`;
-    await sql`DELETE FROM application_documents WHERE application_id = ${row.id}`;
-
-    for (const [i, step] of service.steps.entries()) {
-      await sql`
-        INSERT INTO application_steps (application_id, position, title_ne, title_en, description_ne, description_en)
-        VALUES (${row.id}, ${i}, ${step.ne}, ${step.en}, ${step.dne ?? ""}, ${step.den ?? ""})`;
-    }
-    for (const [i, doc] of service.docs.entries()) {
-      await sql`
-        INSERT INTO application_documents (application_id, position, label_ne, label_en, is_required)
-        VALUES (${row.id}, ${i}, ${doc.ne}, ${doc.en}, ${!doc.optional})`;
-    }
+        updated_at = now()`;
   }
 
   return `${SERVICES.length} services, ${CATEGORIES.length} categories, ${SECTIONS.length} sections, ${WARD_COUNT} wards`;

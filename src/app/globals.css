@@ -65,6 +65,24 @@ body {
   line-height: 1.85;
 }
 
+/* A rendered document sets its own metrics.
+   The generous Devanagari leading above is right for reading a web page and
+   wrong inside an official form: `:lang(ne)` matches every span the .docx
+   renderer emits and out-specifies the paragraph's own line-height, making each
+   line ~60% taller than Word draws it — enough to push a one-page निवेदन onto a
+   second sheet. Inside a document, the paragraph decides. */
+.docx-page,
+.docx-page :lang(ne),
+.docx-page .ne {
+  /* Close to Word's "single" spacing; a paragraph carrying its own
+     line-height from the file still overrides this. */
+  line-height: 1.25;
+}
+.docx-page :lang(ne),
+.docx-page .ne {
+  line-height: inherit;
+}
+
 *:focus-visible {
   outline: 3px solid var(--color-royal-500);
   outline-offset: 2px;
@@ -177,6 +195,51 @@ body {
     @apply border-b border-line-100 px-3 py-3 align-middle;
   }
 
+  /* The application itself ---------------------------------------------
+     A rendered .docx, drawn at the size the paper will be. Everything here
+     mirrors Word's own defaults so the preview reads as the real document. */
+  .docx-page {
+    @apply mx-auto bg-white text-ink-900;
+    box-shadow: 0 1px 3px rgb(16 25 43 / 0.14), 0 6px 24px rgb(16 25 43 / 0.08);
+    font-size: 11pt;
+  }
+  .docx-page p {
+    margin: 0;
+    /* Forms lean on runs of spaces and tabs for alignment — keep them. */
+    white-space: pre-wrap;
+    tab-size: 8;
+  }
+  .docx-page table {
+    max-width: 100%;
+    /* Word gives a table no margin of its own; the surrounding paragraphs
+       already carry the document's spacing. */
+    margin: 0;
+  }
+  .docx-page img {
+    display: inline-block;
+  }
+  .docx-viewport {
+    /* The page inside is scaled to fit, so this must never take its width from
+       its own content: a wider child would widen the box, which would widen the
+       child again. */
+    @apply min-w-0 overflow-hidden;
+  }
+  .docx-marker {
+    @apply inline-block;
+    min-width: 20pt;
+  }
+  /* A blank the citizen has not filled in yet. */
+  .docx-field {
+    @apply rounded-[2px] px-0.5;
+    background: #fff6da;
+    box-shadow: inset 0 -1px 0 #d8a63a;
+  }
+  .docx-field[data-filled="1"] {
+    background: #e8f2ff;
+    box-shadow: inset 0 -1px 0 #7ba7e0;
+    font-weight: 600;
+  }
+
   .section-title {
     @apply text-[20px] font-bold text-ink-900 sm:text-[22px];
   }
@@ -187,9 +250,42 @@ body {
 
 /* ---------------------------------------------------------------- print */
 @media print {
-  .no-print { display: none !important; }
+  .no-print,
+  [data-print-hide] { display: none !important; }
+
   body { font-size: 12pt; background: #fff; }
   .print-sheet { box-shadow: none !important; border: none !important; padding: 0 !important; }
   a[href]::after { content: ""; }
   @page { margin: 18mm 16mm; }
+
+  /* The document keeps its own margins, so the page box adds none of its own.
+     Routes that print an application set `@page { margin: 0 }` themselves. */
+  .docx-page {
+    box-shadow: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+  }
+  /* Undo the on-screen fit-to-width scaling, and let the page box own the
+     margins so the printed sheet matches the Word document exactly. */
+  .docx-viewport,
+  .docx-viewport > * {
+    zoom: 1 !important;
+    overflow: visible !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: transparent !important;
+    border: 0 !important;
+  }
+  .gov-container {
+    max-width: none !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+  /* On paper an answer is just text: the highlight and the heavier weight are
+     screen affordances for spotting which blanks are still empty. */
+  .docx-field {
+    background: transparent !important;
+    box-shadow: none !important;
+    font-weight: inherit !important;
+  }
 }

@@ -1,8 +1,8 @@
 import { sql } from "./db";
 import { searchVariants } from "./translit";
 import type {
-  ApplicationDetail, ApplicationFile, ApplicationStep, ApplicationSummary, Category,
-  RequiredDocument, SearchParamsShape, Section, Status, Ward,
+  ApplicationDetail, ApplicationFile, ApplicationSummary, Category,
+  SearchParamsShape, Section, Status, Ward,
 } from "./types";
 
 /* ------------------------------------------------------------------ taxonomy */
@@ -24,13 +24,21 @@ export async function getWards(): Promise<Ward[]> {
 /** Built lazily so importing this module never touches the database. */
 const summarySelect = () => sql`
   a.id, a.slug, a.title_ne, a.title_en, a.description_ne, a.description_en,
-  a.status, a.is_sample, a.all_wards, a.office_ne, a.office_en,
-  a.online_form_enabled, a.updated_at,
+  a.status, a.is_sample, a.all_wards, a.updated_at,
   c.slug AS category_slug, c.name_ne AS category_name_ne, c.name_en AS category_name_en,
   s.slug AS section_slug, s.name_ne AS section_name_ne, s.name_en AS section_name_en,
-  (SELECT count(*)::int FROM application_documents d WHERE d.application_id = a.id) AS document_count,
-  (SELECT count(*)::int FROM application_steps st WHERE st.application_id = a.id) AS step_count,
   COALESCE((SELECT array_agg(DISTINCT f.kind) FROM application_files f WHERE f.application_id = a.id), '{}') AS file_kinds,
+  (SELECT f.id FROM application_files f
+    WHERE f.application_id = a.id AND f.kind = 'word' ORDER BY f.position, f.id LIMIT 1) AS word_file_id,
+  (SELECT f.id FROM application_files f
+    WHERE f.application_id = a.id AND f.kind = 'pdf'  ORDER BY f.position, f.id LIMIT 1) AS pdf_file_id,
+  EXISTS (SELECT 1 FROM application_files f
+           WHERE f.application_id = a.id AND f.is_template
+             AND jsonb_typeof(f.template_fields) = 'array'
+             AND jsonb_array_length(f.template_fields) > 0) AS fillable,
+  EXISTS (SELECT 1 FROM application_files f
+           WHERE f.application_id = a.id
+             AND (f.kind = 'pdf' OR (f.kind = 'word' AND f.preview_html <> ''))) AS viewable,
   COALESCE((SELECT array_agg(w.number ORDER BY w.number) FROM application_wards aw
               JOIN wards w ON w.id = aw.ward_id WHERE aw.application_id = a.id), '{}') AS ward_numbers
 `;
@@ -70,7 +78,11 @@ export async function searchApplications(
   }
   if (params.doc) {
     if (params.doc === "online") {
-      conditions.push(sql`a.online_form_enabled`);
+      // Fillable means a labelled template — not merely a Word file.
+      conditions.push(sql`EXISTS (SELECT 1 FROM application_files f
+        WHERE f.application_id = a.id AND f.is_template
+          AND jsonb_typeof(f.template_fields) = 'array'
+          AND jsonb_array_length(f.template_fields) > 0)`);
     } else if (params.doc === "printable") {
       conditions.push(sql`EXISTS (SELECT 1 FROM application_files f WHERE f.application_id = a.id)`);
     } else {
@@ -134,8 +146,7 @@ export async function getApplicationBySlug(
 ): Promise<ApplicationDetail | null> {
   const rows = await sql<ApplicationDetail[]>`
     SELECT ${summarySelect()},
-           a.about_ne, a.about_en, a.fee_ne, a.fee_en, a.duration_ne, a.duration_en,
-           a.keywords_ne, a.keywords_en, a.aliases, a.online_form_schema,
+           a.keywords_ne, a.keywords_en, a.aliases,
            a.view_count, a.created_at, a.published_at
       FROM applications a
       LEFT JOIN categories c ON c.id = a.category_id
@@ -152,8 +163,7 @@ export async function getApplicationBySlug(
 export async function getApplicationById(id: number): Promise<ApplicationDetail | null> {
   const rows = await sql<ApplicationDetail[]>`
     SELECT ${summarySelect()},
-           a.about_ne, a.about_en, a.fee_ne, a.fee_en, a.duration_ne, a.duration_en,
-           a.keywords_ne, a.keywords_en, a.aliases, a.online_form_schema,
+           a.keywords_ne, a.keywords_en, a.aliases,
            a.view_count, a.created_at, a.published_at
       FROM applications a
       LEFT JOIN categories c ON c.id = a.category_id
@@ -181,26 +191,33 @@ function asArray<T>(value: unknown): T[] {
   return [];
 }
 
+/** Same tolerance as `asArray`, for a jsonb object rather than an array. */
+function asObject<T>(value: unknown): T | null {
+  if (value && typeof value === "object" && !Array.isArray(value)) return value as T;
+  if (typeof value === "string") {
+    try {
+      const parsed = JSON.parse(value);
+      return parsed && typeof parsed === "object" ? (parsed as T) : null;
+    } catch {
+      return null;
+    }
+  }
+  return null;
+}
+
 async function hydrate(app: ApplicationDetail): Promise<ApplicationDetail> {
-  const [steps, requirements, files] = await Promise.all([
-    sql<ApplicationStep[]>`
-      SELECT * FROM application_steps WHERE application_id = ${app.id} ORDER BY position, id`,
-    sql<RequiredDocument[]>`
-      SELECT * FROM application_documents WHERE application_id = ${app.id} ORDER BY position, id`,
-    sql<ApplicationFile[]>`
-      SELECT id, application_id, position, label_ne, label_en, kind, is_editable, storage,
-             url, blob_pathname, mime, size, original_name, created_at,
-             is_template, template_fields
-        FROM application_files WHERE application_id = ${app.id} ORDER BY position, id`,
-  ]);
+  const files = await sql<ApplicationFile[]>`
+    SELECT id, application_id, position, label_ne, label_en, kind, is_editable, storage,
+           url, blob_pathname, mime, size, original_name, created_at,
+           is_template, template_fields, preview_html, preview_page
+      FROM application_files WHERE application_id = ${app.id} ORDER BY position, id`;
+
   return {
     ...app,
-    online_form_schema: asArray(app.online_form_schema),
-    steps: [...steps],
-    requirements: [...requirements],
     files: files.map((file) => ({
       ...file,
       template_fields: asArray(file.template_fields),
+      preview_page: asObject(file.preview_page),
     })),
   };
 }

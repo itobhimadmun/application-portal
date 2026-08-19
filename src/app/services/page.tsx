@@ -4,7 +4,7 @@ import EmptyState from "@/components/ui/EmptyState";
 import Filters from "@/components/Filters";
 import Pagination from "@/components/ui/Pagination";
 import SearchBox from "@/components/SearchBox";
-import ServiceCard from "@/components/ServiceCard";
+import ApplicationCard from "@/components/ApplicationCard";
 import SetupNotice from "@/components/SetupNotice";
 import { getLocale, translator, pick } from "@/lib/i18n";
 import { toNepaliDigits } from "@/lib/translit";
@@ -103,7 +103,7 @@ export default async function ServicesPage({ searchParams }: { searchParams: SP 
               <>
                 <ul className="grid gap-4 sm:grid-cols-2">
                   {result.items.map((app) => (
-                    <li key={app.id}><ServiceCard app={app} locale={locale} /></li>
+                    <li key={app.id}><ApplicationCard app={app} locale={locale} /></li>
                   ))}
                 </ul>
                 <Pagination page={page} perPage={perPage} total={result.total} buildHref={buildHref} />

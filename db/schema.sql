@@ -181,3 +181,9 @@ CREATE INDEX IF NOT EXISTS login_attempts_email_idx ON login_attempts (email, cr
 -- ------------------------------------------- editable templates + settings (v3)
 ALTER TABLE application_files ADD COLUMN IF NOT EXISTS is_template     BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE application_files ADD COLUMN IF NOT EXISTS template_fields JSONB   NOT NULL DEFAULT '[]'::jsonb;
+
+-- ------------------------------------- cached document previews (v4)
+-- Parsing a .docx on every page view would be wasteful, so the rendered
+-- HTML is stored beside the file and rebuilt whenever the file changes.
+ALTER TABLE application_files ADD COLUMN IF NOT EXISTS preview_html TEXT  NOT NULL DEFAULT '';
+ALTER TABLE application_files ADD COLUMN IF NOT EXISTS preview_page JSONB NOT NULL DEFAULT '{}'::jsonb;

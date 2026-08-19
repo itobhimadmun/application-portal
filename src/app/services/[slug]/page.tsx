@@ -1,16 +1,17 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
+import ApplicationActions, { actionsOfFiles } from "@/components/ApplicationActions";
+import ApplicationCard from "@/components/ApplicationCard";
 import Breadcrumb from "@/components/ui/Breadcrumb";
-import DocumentActions from "@/components/DocumentActions";
-import RequirementList from "@/components/RequirementList";
-import ServiceCard from "@/components/ServiceCard";
+import DocumentPage from "@/components/DocumentPage";
+import DocumentViewport from "@/components/DocumentViewport";
 import SetupNotice from "@/components/SetupNotice";
-import StepTimeline from "@/components/StepTimeline";
 import { getLocale, translator, pick } from "@/lib/i18n";
-import { toNepaliDigits } from "@/lib/translit";
+import { getPreview, primaryFile } from "@/lib/preview";
 import { getApplicationBySlug, getRelatedApplications, registerView } from "@/lib/queries";
-import { IconBuilding, IconCash, IconClock, IconMap, IconAlert } from "@/components/ui/Icons";
+import { humanSize } from "@/lib/storage";
+import { IconAlert, IconPrint } from "@/components/ui/Icons";
 
 export const dynamic = "force-dynamic";
 
@@ -21,19 +22,22 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
     const { slug } = await params;
     const app = await getApplicationBySlug(slug);
     if (!app) return { title: "Not found" };
-    return {
-      title: app.title_ne,
-      description: app.description_ne || app.description_en,
-    };
+    return { title: app.title_ne };
   } catch {
     return {};
   }
 }
 
-export default async function ApplicationDetailPage({ params }: { params: Params }) {
+/**
+ * One application. The form is the page: its name, the four actions, and then
+ * the document itself. There is no service write-up to scroll past — anyone
+ * who has arrived here already knows what they came for.
+ */
+export default async function ApplicationPage({ params }: { params: Params }) {
   const locale = await getLocale();
   const t = translator(locale);
   const { slug } = await params;
+  const L = (ne: string, en: string) => (locale === "en" ? en : ne);
 
   let app, related;
   try {
@@ -46,12 +50,13 @@ export default async function ApplicationDetailPage({ params }: { params: Params
     return <SetupNotice error={error instanceof Error ? error.message : undefined} />;
   }
 
-  const wards = app.all_wards
-    ? t("filter.allWards")
-    : app.ward_numbers.map((w) => (locale === "ne" ? `वडा ${toNepaliDigits(w)}` : `Ward ${w}`)).join(", ");
-  const office = pick(locale, app.office_ne, app.office_en);
-  const firstPdf = app.files.find((f) => f.kind === "pdf");
-  const hasTemplate = app.files.some((f) => f.is_template && (f.template_fields?.length ?? 0) > 0);
+  const title = pick(locale, app.title_ne, app.title_en);
+  const alternate = locale === "ne" ? app.title_en : app.title_ne;
+  const actions = actionsOfFiles(app.slug, app.files);
+
+  const lead = primaryFile(app.files);
+  const preview = lead ? await getPreview(lead) : null;
+  const pdf = app.files.find((file) => file.kind === "pdf");
 
   return (
     <>
@@ -59,162 +64,85 @@ export default async function ApplicationDetailPage({ params }: { params: Params
         items={[
           { href: "/", label: t("nav.home") },
           { href: "/services", label: t("nav.services") },
-          ...(app.category_slug
-            ? [{ href: `/services?category=${app.category_slug}`, label: pick(locale, app.category_name_ne, app.category_name_en) }]
-            : []),
-          { label: pick(locale, app.title_ne, app.title_en) },
+          { label: title },
         ]}
       />
 
-      <div className="gov-container py-6 sm:py-8">
-        <div className="grid gap-8 lg:grid-cols-[1fr_320px]">
-          {/* --------------------------------------------------- main column */}
-          <div className="min-w-0">
-            <div className="mb-2 flex flex-wrap gap-1.5">
-              {app.category_slug ? (
-                <span className="badge-royal">{pick(locale, app.category_name_ne, app.category_name_en)}</span>
-              ) : null}
-              {app.is_sample ? <span className="badge-warning">{locale === "ne" ? "नमुना सामग्री" : "Sample content"}</span> : null}
-            </div>
+      <div className="gov-container py-5 sm:py-7">
+        {/* ------------------------------------------------------- the form */}
+        <header className="mb-5">
+          <p className="text-[13px] font-semibold uppercase tracking-wide text-crimson-600">
+            {L("निवेदन फाराम", "Application form")}
+          </p>
+          <h1 className="page-title mt-1">{title}</h1>
+          {alternate ? <p className="mt-0.5 text-[15px] text-ink-500">{alternate}</p> : null}
+        </header>
 
-            <h1 className="page-title">{pick(locale, app.title_ne, app.title_en)}</h1>
-            <p className="mt-1 text-[15px] text-ink-500">
-              {locale === "ne" ? app.title_en : app.title_ne}
-            </p>
-            {pick(locale, app.description_ne, app.description_en) ? (
-              <p className="mt-3 text-[16px] text-ink-700">
-                {pick(locale, app.description_ne, app.description_en)}
-              </p>
-            ) : null}
-
-            {app.is_sample ? (
-              <p className="alert-warning mt-4 flex items-start gap-2">
-                <IconAlert className="mt-0.5 h-5 w-5 shrink-0" /> {t("app.sampleNotice")}
-              </p>
-            ) : null}
-
-            {/* The forms are what people come here for, so they lead the page. */}
-            <section id="forms" className="mt-6 scroll-mt-4 rounded-[6px] border-2 border-royal-200 bg-royal-50 p-4 sm:p-5">
-              <h2 className="section-title mb-3">{t("app.forms")}</h2>
-              <DocumentActions
-                files={app.files}
-                locale={locale}
-                slug={app.slug}
-                onlineForm={app.online_form_enabled || hasTemplate}
-              />
-            </section>
-
-            {pick(locale, app.about_ne, app.about_en) ? (
-              <section className="mt-8">
-                <h2 className="section-title">{t("app.about")}</h2>
-                <p className="mt-2 whitespace-pre-line text-[16px] text-ink-700">
-                  {pick(locale, app.about_ne, app.about_en)}
-                </p>
-              </section>
-            ) : null}
-
-            {app.requirements.length ? (
-              <section className="mt-8">
-                <h2 className="section-title mb-3">{t("app.documents")}</h2>
-                <RequirementList items={app.requirements} locale={locale} />
-              </section>
-            ) : null}
-
-            {app.steps.length ? (
-              <section className="mt-8">
-                <h2 className="section-title mb-4">{t("app.process")}</h2>
-                <StepTimeline steps={app.steps} locale={locale} />
-              </section>
-            ) : null}
-
-            {firstPdf ? (
-              <section className="no-print mt-8">
-                <h2 className="section-title mb-3">{t("doc.preview")}</h2>
-                <object
-                  data={`/api/files/${firstPdf.id}`}
-                  type="application/pdf"
-                  className="h-[520px] w-full rounded-[6px] border border-line-200"
-                  aria-label={t("doc.preview")}
-                >
-                  <p className="p-4 text-[15px]">
-                    <a className="text-royal-600 underline" href={`/api/files/${firstPdf.id}?download=1`}>
-                      {t("doc.downloadPdf")}
-                    </a>
-                  </p>
-                </object>
-              </section>
-            ) : null}
-
-            {related.length ? (
-              <section className="mt-10">
-                <h2 className="section-title mb-3">{t("app.related")}</h2>
-                <ul className="grid gap-4 sm:grid-cols-2">
-                  {related.map((item) => (
-                    <li key={item.id}><ServiceCard app={item} locale={locale} /></li>
-                  ))}
-                </ul>
-              </section>
-            ) : null}
+        <div className="gov-card border-royal-200 bg-royal-50 p-4 sm:p-5">
+          <ApplicationActions actions={actions} locale={locale} showView={false} />
+          <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[13.5px] text-ink-500">
+            <Link href={`/services/${app.slug}/print`} className="inline-flex items-center gap-1.5 font-semibold text-royal-600 hover:underline">
+              <IconPrint className="h-4 w-4" /> {L("खाली फाराम प्रिन्ट", "Print blank form")}
+            </Link>
+            {lead ? <span>{lead.original_name} · {humanSize(lead.size)}</span> : null}
           </div>
-
-          {/* ------------------------------------------------------- sidebar */}
-          <aside className="space-y-4 lg:sticky lg:top-4 lg:self-start">
-            <div className="gov-card p-4">
-              <h2 className="mb-3 text-[16px] font-bold text-ink-900">{t("app.relatedOffice")}</h2>
-              <dl className="space-y-3 text-[15px]">
-                {app.section_slug ? (
-                  <div className="flex items-start gap-2">
-                    <IconBuilding className="mt-0.5 h-5 w-5 shrink-0 text-royal-600" />
-                    <div>
-                      <dt className="text-[13px] text-ink-500">{t("app.section")}</dt>
-                      <dd className="font-medium text-ink-900">
-                        <Link href={`/services?section=${app.section_slug}`} className="hover:underline">
-                          {pick(locale, app.section_name_ne, app.section_name_en)}
-                        </Link>
-                      </dd>
-                    </div>
-                  </div>
-                ) : null}
-                <div className="flex items-start gap-2">
-                  <IconMap className="mt-0.5 h-5 w-5 shrink-0 text-royal-600" />
-                  <div>
-                    <dt className="text-[13px] text-ink-500">{t("app.appliesAt")}</dt>
-                    <dd className="font-medium text-ink-900">{office || wards}</dd>
-                    {office && wards ? <dd className="text-[13.5px] text-ink-500">{wards}</dd> : null}
-                  </div>
-                </div>
-                {pick(locale, app.fee_ne, app.fee_en) ? (
-                  <div className="flex items-start gap-2">
-                    <IconCash className="mt-0.5 h-5 w-5 shrink-0 text-royal-600" />
-                    <div>
-                      <dt className="text-[13px] text-ink-500">{t("app.fee")}</dt>
-                      <dd className="font-medium text-ink-900">{pick(locale, app.fee_ne, app.fee_en)}</dd>
-                    </div>
-                  </div>
-                ) : null}
-                {pick(locale, app.duration_ne, app.duration_en) ? (
-                  <div className="flex items-start gap-2">
-                    <IconClock className="mt-0.5 h-5 w-5 shrink-0 text-royal-600" />
-                    <div>
-                      <dt className="text-[13px] text-ink-500">{t("app.duration")}</dt>
-                      <dd className="font-medium text-ink-900">{pick(locale, app.duration_ne, app.duration_en)}</dd>
-                    </div>
-                  </div>
-                ) : null}
-              </dl>
-            </div>
-
-            <div className="gov-card p-4">
-              <a href="#forms" className="btn-crimson w-full">{t("app.forms")}</a>
-              <Link href={`/services/${app.slug}/print`} className="btn-outline mt-2 w-full">
-                {t("doc.print")}
-              </Link>
-              <p className="mt-3 text-[13px] text-ink-500">
-                {t("app.updatedOn")}: {new Date(app.updated_at).toLocaleDateString("en-GB")}
-              </p>
-            </div>
-          </aside>
         </div>
+
+        {app.is_sample ? (
+          <p className="alert-warning mt-4 flex items-start gap-2 text-[14px]">
+            <IconAlert className="mt-0.5 h-5 w-5 shrink-0" /> {t("app.sampleNotice")}
+          </p>
+        ) : null}
+
+        {/* --------------------------------------------------- the document */}
+        <section className="mt-6 min-w-0" aria-label={L("निवेदनको पूर्वावलोकन", "Application preview")}>
+          {preview ? (
+            <DocumentViewport pageWidth={preview.page.width} className="rounded-[6px] bg-line-100 p-3 sm:p-5">
+              <DocumentPage html={preview.html} page={preview.page} />
+            </DocumentViewport>
+          ) : pdf ? (
+            <object
+              data={`/api/files/${pdf.id}#view=FitH`}
+              type="application/pdf"
+              className="h-[80vh] w-full rounded-[6px] border border-line-200 bg-line-100"
+              aria-label={title}
+            >
+              <p className="p-5 text-[15px]">
+                {L("यो ब्राउजरले PDF देखाउन सक्दैन।", "This browser cannot display the PDF.")}{" "}
+                <a href={`/api/files/${pdf.id}?download=1`} className="font-semibold text-royal-600 hover:underline">
+                  {L("डाउनलोड गर्नुहोस्", "Download it")}
+                </a>
+              </p>
+            </object>
+          ) : (
+            <p className="gov-panel text-[15px] text-ink-500">
+              {L(
+                "यस निवेदनको फाइल अझै अपलोड गरिएको छैन।",
+                "The file for this application has not been uploaded yet."
+              )}
+            </p>
+          )}
+        </section>
+
+        {/* Repeat the actions after a long document, so nobody scrolls back. */}
+        {preview || pdf ? (
+          <div className="mt-5">
+            <ApplicationActions actions={actions} locale={locale} showView={false} />
+          </div>
+        ) : null}
+
+        {/* Other forms are navigation, not explanation — they help people find
+            the right निवेदन when they have landed on a near miss. */}
+        {related.length ? (
+          <section className="mt-10 border-t border-line-200 pt-6">
+            <h2 className="section-title mb-4">{L("मिल्दाजुल्दा निवेदन", "Related applications")}</h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {related.map((item) => (
+                <ApplicationCard key={item.id} app={item} locale={locale} />
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
     </>
   );

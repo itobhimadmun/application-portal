@@ -13,7 +13,8 @@
     "db:seed": "tsx src/scripts/seed.ts",
     "db:reset": "tsx src/scripts/reset.ts",
     "db:search-check": "tsx src/scripts/search-check.ts",
-    "db:embed-schema": "node scripts/embed-schema.mjs"
+    "db:embed-schema": "node scripts/embed-schema.mjs",
+    "doc:render-check": "tsx src/scripts/render-check.mts"
   },
   "dependencies": {
     "@vercel/blob": "^2.0.0",

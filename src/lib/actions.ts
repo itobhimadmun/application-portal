@@ -14,7 +14,8 @@ import { getSiteSettings, saveSiteSettings, SETTING_KEYS, type SiteSettings } fr
 import { buildSearchIndex } from "./translit";
 import { slugify } from "./slug";
 import { storeFile, removeStoredFile } from "./storage";
-import { extractPlaceholders, isDocx } from "./docx-template";
+import { isDocx } from "./docx-template";
+import { renderDocxToHtml } from "./docx-html";
 
 export type ActionState = {
   ok?: boolean;
@@ -140,14 +141,11 @@ export async function logoutAction(): Promise<void> {
 
 /* ----------------------------------------------------------- applications */
 
-const fieldSchema = z.object({
-  key: z.string().min(1),
-  label_ne: z.string().default(""),
-  label_en: z.string().default(""),
-  type: z.enum(["text", "textarea", "number", "date"]).default("text"),
-  required: z.boolean().optional(),
-});
-
+/**
+ * What an application is, now that the portal is a form library: a name, where
+ * it belongs, and the words that help someone find it. The description and
+ * keywords never appear on a page — they exist purely to be searched.
+ */
 const payloadSchema = z.object({
   id: z.number().nullable().optional(),
   slug: z.string().default(""),
@@ -155,34 +153,15 @@ const payloadSchema = z.object({
   title_en: z.string().default(""),
   description_ne: z.string().default(""),
   description_en: z.string().default(""),
-  about_ne: z.string().default(""),
-  about_en: z.string().default(""),
   category_id: z.number().nullable().default(null),
   section_id: z.number().nullable().default(null),
   all_wards: z.boolean().default(true),
   ward_ids: z.array(z.number()).default([]),
-  office_ne: z.string().default(""),
-  office_en: z.string().default(""),
-  fee_ne: z.string().default(""),
-  fee_en: z.string().default(""),
-  duration_ne: z.string().default(""),
-  duration_en: z.string().default(""),
   keywords_ne: z.array(z.string()).default([]),
   keywords_en: z.array(z.string()).default([]),
   aliases: z.array(z.string()).default([]),
   status: z.enum(["draft", "published", "archived"]).default("draft"),
   is_sample: z.boolean().default(false),
-  online_form_enabled: z.boolean().default(false),
-  online_form_schema: z.array(fieldSchema).default([]),
-  steps: z.array(z.object({
-    title_ne: z.string().default(""), title_en: z.string().default(""),
-    description_ne: z.string().default(""), description_en: z.string().default(""),
-  })).default([]),
-  requirements: z.array(z.object({
-    label_ne: z.string().default(""), label_en: z.string().default(""),
-    note_ne: z.string().default(""), note_en: z.string().default(""),
-    is_required: z.boolean().default(true),
-  })).default([]),
 });
 
 export type ApplicationPayload = z.infer<typeof payloadSchema>;
@@ -218,7 +197,6 @@ export async function saveApplication(_prev: ActionState, formData: FormData): P
 
   const searchIndex = buildSearchIndex([
     data.title_ne, data.title_en, data.description_ne, data.description_en,
-    data.about_ne, data.about_en, data.office_ne, data.office_en,
     ...data.keywords_ne, ...data.keywords_en, ...data.aliases,
   ]);
 
@@ -230,33 +208,25 @@ export async function saveApplication(_prev: ActionState, formData: FormData): P
         UPDATE applications SET
           slug = ${slug}, title_ne = ${data.title_ne}, title_en = ${data.title_en},
           description_ne = ${data.description_ne}, description_en = ${data.description_en},
-          about_ne = ${data.about_ne}, about_en = ${data.about_en},
           category_id = ${data.category_id}, section_id = ${data.section_id},
-          all_wards = ${data.all_wards}, office_ne = ${data.office_ne}, office_en = ${data.office_en},
-          fee_ne = ${data.fee_ne}, fee_en = ${data.fee_en},
-          duration_ne = ${data.duration_ne}, duration_en = ${data.duration_en},
+          all_wards = ${data.all_wards},
           keywords_ne = ${data.keywords_ne}, keywords_en = ${data.keywords_en}, aliases = ${data.aliases},
           search_index = ${searchIndex}, status = ${data.status}, is_sample = ${data.is_sample},
-          online_form_enabled = ${data.online_form_enabled},
-          online_form_schema = ${sql.json(data.online_form_schema)},
           updated_by = ${user.id}, updated_at = now(),
           published_at = CASE WHEN ${data.status} = 'published' AND published_at IS NULL THEN now() ELSE published_at END
         WHERE id = ${applicationId}`;
     } else {
       const [row] = await sql<{ id: number }[]>`
         INSERT INTO applications (
-          slug, title_ne, title_en, description_ne, description_en, about_ne, about_en,
-          category_id, section_id, all_wards, office_ne, office_en, fee_ne, fee_en,
-          duration_ne, duration_en, keywords_ne, keywords_en, aliases, search_index,
-          status, is_sample, online_form_enabled, online_form_schema,
-          created_by, updated_by, published_at
+          slug, title_ne, title_en, description_ne, description_en,
+          category_id, section_id, all_wards,
+          keywords_ne, keywords_en, aliases, search_index,
+          status, is_sample, created_by, updated_by, published_at
         ) VALUES (
           ${slug}, ${data.title_ne}, ${data.title_en}, ${data.description_ne}, ${data.description_en},
-          ${data.about_ne}, ${data.about_en}, ${data.category_id}, ${data.section_id}, ${data.all_wards},
-          ${data.office_ne}, ${data.office_en}, ${data.fee_ne}, ${data.fee_en},
-          ${data.duration_ne}, ${data.duration_en}, ${data.keywords_ne}, ${data.keywords_en},
-          ${data.aliases}, ${searchIndex}, ${data.status}, ${data.is_sample},
-          ${data.online_form_enabled}, ${sql.json(data.online_form_schema)},
+          ${data.category_id}, ${data.section_id}, ${data.all_wards},
+          ${data.keywords_ne}, ${data.keywords_en}, ${data.aliases}, ${searchIndex},
+          ${data.status}, ${data.is_sample},
           ${user.id}, ${user.id}, ${data.status === "published" ? sql`now()` : null}
         ) RETURNING id`;
       applicationId = row.id;
@@ -267,32 +237,6 @@ export async function saveApplication(_prev: ActionState, formData: FormData): P
       await sql`INSERT INTO application_wards ${sql(
         data.ward_ids.map((wardId) => ({ application_id: applicationId as number, ward_id: wardId })),
         "application_id", "ward_id"
-      )}`;
-    }
-
-    await sql`DELETE FROM application_steps WHERE application_id = ${applicationId}`;
-    const steps = data.steps.filter((s) => s.title_ne.trim() || s.title_en.trim());
-    if (steps.length) {
-      await sql`INSERT INTO application_steps ${sql(
-        steps.map((s, i) => ({
-          application_id: applicationId as number, position: i,
-          title_ne: s.title_ne, title_en: s.title_en,
-          description_ne: s.description_ne, description_en: s.description_en,
-        })),
-        "application_id", "position", "title_ne", "title_en", "description_ne", "description_en"
-      )}`;
-    }
-
-    await sql`DELETE FROM application_documents WHERE application_id = ${applicationId}`;
-    const docs = data.requirements.filter((d) => d.label_ne.trim() || d.label_en.trim());
-    if (docs.length) {
-      await sql`INSERT INTO application_documents ${sql(
-        docs.map((d, i) => ({
-          application_id: applicationId as number, position: i,
-          label_ne: d.label_ne, label_en: d.label_en,
-          note_ne: d.note_ne, note_en: d.note_en, is_required: d.is_required,
-        })),
-        "application_id", "position", "label_ne", "label_en", "note_ne", "note_en", "is_required"
       )}`;
     }
   } catch (error) {
@@ -362,20 +306,28 @@ export async function uploadApplicationFile(_prev: ActionState, formData: FormDa
     const [{ position }] = await sql<{ position: number }[]>`
       SELECT COALESCE(max(position) + 1, 0) AS position FROM application_files WHERE application_id = ${applicationId}`;
 
-    // A .docx is scanned for {{placeholders}}; each one becomes a form field
-    // the administrator can label, and a citizen can then fill online.
+    // A .docx is scanned for {{placeholders}} — each one becomes a field the
+    // administrator can label and a citizen can fill — and rendered once to
+    // HTML so the portal can show the document without re-parsing it.
     let templateFields: { key: string; label_ne: string; label_en: string; type: string }[] = [];
+    let previewHtml = "";
+    let previewPage: unknown = {};
+
     if (isDocx(file.name, stored.mime)) {
+      const bytes = stored.data ?? Buffer.from(await file.arrayBuffer());
       try {
-        const bytes = stored.data ?? Buffer.from(await file.arrayBuffer());
-        templateFields = (await extractPlaceholders(bytes)).map((key) => ({
+        const rendered = await renderDocxToHtml(bytes);
+        previewHtml = rendered.html;
+        previewPage = rendered.page;
+        templateFields = rendered.fields.map((key) => ({
           key,
           label_ne: "",
           label_en: key.replace(/[_.\-]+/g, " "),
           type: "text",
         }));
       } catch {
-        templateFields = [];
+        // An unreadable file is still worth keeping as a download.
+        previewHtml = "";
       }
     }
     detected = templateFields.length;
@@ -383,12 +335,12 @@ export async function uploadApplicationFile(_prev: ActionState, formData: FormDa
     await sql`
       INSERT INTO application_files
         (application_id, position, label_ne, label_en, kind, is_editable, storage, url, blob_pathname,
-         data, mime, size, original_name, is_template, template_fields)
+         data, mime, size, original_name, is_template, template_fields, preview_html, preview_page)
       VALUES
         (${applicationId}, ${position}, ${labelNe}, ${labelEn}, ${stored.kind}, ${editable},
          ${stored.storage}, ${stored.url}, ${stored.blobPathname}, ${stored.data}, ${stored.mime},
          ${stored.size}, ${stored.originalName}, ${detected > 0},
-         ${sql.json(templateFields)})`;
+         ${sql.json(templateFields)}, ${previewHtml}, ${sql.json(previewPage as never)})`;
   } catch (error) {
     return { error: error instanceof Error ? error.message : "Upload failed." };
   }

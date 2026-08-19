@@ -9,7 +9,10 @@ export default async function SiteFooter() {
   const year = new Date().getFullYear();
 
   return (
-    <footer className="no-print mt-14 border-t-4 border-crimson-600 bg-royal-800 text-royal-100">
+    <footer
+      className="no-print mt-14 border-t-4 border-crimson-600 bg-royal-800 text-royal-100"
+      data-print-hide
+    >
       <div className="gov-container grid gap-8 py-10 sm:grid-cols-2 lg:grid-cols-3">
         <div>
           <p className="text-[17px] font-bold text-white">
@@ -25,11 +28,9 @@ export default async function SiteFooter() {
         <div>
           <p className="mb-2 text-[15px] font-bold text-white">{t("nav.services")}</p>
           <ul className="space-y-1.5 text-[14px]">
-            <li><Link href="/services" className="hover:underline">{t("nav.services")}</Link></li>
-            <li><Link href="/#categories" className="hover:underline">{t("nav.categories")}</Link></li>
-            <li><Link href="/#sections" className="hover:underline">{t("nav.sections")}</Link></li>
-            <li><Link href="/#wards" className="hover:underline">{t("nav.wards")}</Link></li>
-            <li><Link href="/guide" className="hover:underline">{t("nav.guide")}</Link></li>
+            <li><Link href="/services" className="hover:underline">{t("search.title")}</Link></li>
+            <li><Link href="/services?doc=word" className="hover:underline">{t("doc.downloadWord")}</Link></li>
+            <li><Link href="/services?doc=pdf" className="hover:underline">{t("doc.downloadPdf")}</Link></li>
           </ul>
         </div>
 

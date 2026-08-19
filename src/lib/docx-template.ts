@@ -17,7 +17,7 @@ import JSZip from "jszip";
  * substitution, which is what makes the match reliable.
  */
 
-const PLACEHOLDER = /\{\{\s*([A-Za-z0-9_.\-]{1,60})\s*\}\}/g;
+export const PLACEHOLDER = /\{\{\s*([A-Za-z0-9_.\-]{1,60})\s*\}\}/g;
 const TEXT_PARTS = ["word/document.xml"];
 
 function xmlParts(zip: JSZip): string[] {
@@ -44,8 +44,16 @@ function decodeXml(value: string): string {
     .replace(/&amp;/g, "&");
 }
 
-/** Rewrite each <w:p> that holds a placeholder, using `transform` on its text. */
-function rewriteParagraphs(xml: string, transform: (text: string) => string): string {
+/**
+ * Rewrite each <w:p> that holds a placeholder, using `transform` on its text.
+ * With `always`, the paragraph is collapsed even when the text is unchanged —
+ * that is the flattening pass on its own.
+ */
+function rewriteParagraphs(
+  xml: string,
+  transform: (text: string) => string,
+  always = false
+): string {
   return xml.replace(/<w:p(?:\s[^>]*)?>[\s\S]*?<\/w:p>/g, (paragraph) => {
     const runs = [...paragraph.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>/g)];
     if (!runs.length) return paragraph;
@@ -54,7 +62,7 @@ function rewriteParagraphs(xml: string, transform: (text: string) => string): st
     if (!joined.includes("{{")) return paragraph;
 
     const replaced = transform(joined);
-    if (replaced === joined) return paragraph;
+    if (replaced === joined && !always) return paragraph;
 
     let index = 0;
     return paragraph.replace(/<w:t(?:\s[^>]*)?>[\s\S]*?<\/w:t>/g, () => {
@@ -65,19 +73,13 @@ function rewriteParagraphs(xml: string, transform: (text: string) => string): st
   });
 }
 
-/** Placeholder names found in the document, in first-seen order. */
-export async function extractPlaceholders(buffer: Buffer): Promise<string[]> {
-  const zip = await JSZip.loadAsync(buffer);
-  const found = new Set<string>();
-
-  for (const part of xmlParts(zip)) {
-    const xml = await zip.file(part)!.async("string");
-    rewriteParagraphs(xml, (text) => {
-      for (const match of text.matchAll(PLACEHOLDER)) found.add(match[1]);
-      return text;
-    });
-  }
-  return [...found];
+/**
+ * Collapse every placeholder-bearing paragraph into its first run, without
+ * changing any text. The HTML renderer needs this too: it can only wrap a
+ * placeholder in a span once the placeholder exists as one contiguous string.
+ */
+export function flattenPlaceholderParagraphs(xml: string): string {
+  return rewriteParagraphs(xml, (text) => text, true);
 }
 
 /** Produce a copy of the template with every placeholder replaced. */

@@ -106,8 +106,10 @@ export default async function AdminApplicationsPage({
                     {KIND_ORDER.filter((k) => app.file_kinds.includes(k)).map((k) => (
                       <span key={k} className="badge-neutral">{k.toUpperCase()}</span>
                     ))}
-                    {app.online_form_enabled ? <span className="badge-success">Online</span> : null}
-                    {!app.file_kinds.length && !app.online_form_enabled ? <span className="text-ink-400">—</span> : null}
+                    {app.fillable ? (
+                      <span className="badge-success">{locale === "en" ? "Fillable" : "भर्न मिल्ने"}</span>
+                    ) : null}
+                    {!app.file_kinds.length ? <span className="text-ink-400">—</span> : null}
                   </span>
                 </td>
                 <td>

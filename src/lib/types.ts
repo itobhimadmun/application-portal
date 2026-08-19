@@ -17,16 +17,6 @@ export type Ward = {
   office_ne: string; office_en: string; contact: string; is_active: boolean;
 };
 
-export type ApplicationStep = {
-  id: number; application_id: number; position: number;
-  title_ne: string; title_en: string; description_ne: string; description_en: string;
-};
-
-export type RequiredDocument = {
-  id: number; application_id: number; position: number;
-  label_ne: string; label_en: string; note_ne: string; note_en: string; is_required: boolean;
-};
-
 export type ApplicationFile = {
   id: number; application_id: number; position: number;
   label_ne: string; label_en: string; kind: FileKind; is_editable: boolean;
@@ -35,6 +25,15 @@ export type ApplicationFile = {
   /** A .docx carrying {{placeholders}} that citizens can fill online. */
   is_template: boolean;
   template_fields: TemplateField[];
+  /** Cached print-shaped HTML of the document, built when the file is saved. */
+  preview_html: string;
+  preview_page: DocxPageBox | null;
+};
+
+/** Page box in points, so the preview can be drawn at the document's real size. */
+export type DocxPageBox = {
+  width: number; height: number;
+  marginTop: number; marginRight: number; marginBottom: number; marginLeft: number;
 };
 
 export type TemplateField = {
@@ -50,38 +49,26 @@ export type ApplicationSummary = {
   description_ne: string; description_en: string;
   status: Status; is_sample: boolean;
   all_wards: boolean;
-  office_ne: string; office_en: string;
-  online_form_enabled: boolean;
   updated_at: string;
   category_slug: string | null; category_name_ne: string | null; category_name_en: string | null;
   section_slug: string | null; section_name_ne: string | null; section_name_en: string | null;
-  document_count: number;
-  step_count: number;
   file_kinds: FileKind[];
   ward_numbers: number[];
+  /* The four actions a listing row needs, resolved in the same query. */
+  word_file_id: number | null;
+  pdf_file_id: number | null;
+  fillable: boolean;
+  viewable: boolean;
   score?: number;
 };
 
 export type ApplicationDetail = ApplicationSummary & {
-  about_ne: string; about_en: string;
-  fee_ne: string; fee_en: string;
-  duration_ne: string; duration_en: string;
+  /** Never displayed — these exist to make the form findable. */
   keywords_ne: string[]; keywords_en: string[]; aliases: string[];
-  online_form_schema: FormField[];
   view_count: number;
   created_at: string;
   published_at: string | null;
-  steps: ApplicationStep[];
-  requirements: RequiredDocument[];
   files: ApplicationFile[];
-};
-
-export type FormField = {
-  key: string;
-  label_ne: string;
-  label_en: string;
-  type: "text" | "textarea" | "number" | "date";
-  required?: boolean;
 };
 
 export type SearchParamsShape = {
