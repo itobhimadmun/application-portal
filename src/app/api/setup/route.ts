@@ -1,8 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import bcrypt from "bcryptjs";
 import { sql } from "@/lib/db";
+import { ensureSchema } from "@/lib/migrate";
 
 export const dynamic = "force-dynamic";
 export const maxDuration = 60;
@@ -32,9 +31,8 @@ export async function GET(request: NextRequest) {
 
   const log: string[] = [];
   try {
-    const schema = readFileSync(join(process.cwd(), "db", "schema.sql"), "utf8");
-    await sql.unsafe(schema);
-    log.push("schema applied");
+    const schema = await ensureSchema();
+    log.push(schema.applied ? `schema applied (${schema.version})` : "schema already current");
 
     const [existing] = await sql<{ count: number }[]>`
       SELECT count(*)::int AS count FROM admin_users`;

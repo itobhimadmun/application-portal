@@ -5,13 +5,15 @@
   "description": "Municipal Application & Form Portal — निवेदन तथा फारम पोर्टल",
   "scripts": {
     "dev": "next dev",
+    "prebuild": "node scripts/embed-schema.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "db:setup": "tsx src/scripts/setup.ts",
     "db:seed": "tsx src/scripts/seed.ts",
     "db:reset": "tsx src/scripts/reset.ts",
-    "db:search-check": "tsx src/scripts/search-check.ts"
+    "db:search-check": "tsx src/scripts/search-check.ts",
+    "db:embed-schema": "node scripts/embed-schema.mjs"
   },
   "dependencies": {
     "@vercel/blob": "^2.0.0",

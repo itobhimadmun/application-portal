@@ -1,4 +1,5 @@
 import { sql } from "./db";
+import { ensureSchema } from "./migrate";
 
 /**
  * Portal identity. Values live in the `settings` table so an administrator can
@@ -43,6 +44,10 @@ function fromEnv(): SiteSettings {
 export async function getSiteSettings(): Promise<SiteSettings> {
   const defaults = fromEnv();
   try {
+    // Safety net: every page renders the header, so this keeps the database in
+    // step with db/schema.sql even if instrumentation did not run. Memoised
+    // per process, so it costs nothing after the first request.
+    await ensureSchema();
     const rows = await sql<{ key: string; value: string }[]>`
       SELECT key, value FROM settings WHERE key LIKE 'site.%'`;
     const stored = Object.fromEntries(rows.map((r) => [r.key.replace(/^site\./, ""), r.value]));
