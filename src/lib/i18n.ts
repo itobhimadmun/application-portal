@@ -23,7 +23,10 @@ const dict = {
   "gov.localLevel": { ne: "स्थानीय तह", en: "Local Level" },
 
   // ---- home
-  "home.heroTitle": { ne: "कुन निवेदन फाराम चाहियो?", en: "Which application form do you need?" },
+  "home.heroTitle": {
+    ne: "आवश्यक निवेदन फाराम छनोट गर्नुहोस्",
+    en: "Choose the application form you need",
+  },
   "home.heroSubtitle": {
     ne: "फाराम खोज्नुहोस् — हेर्नुहोस्, डाउनलोड गर्नुहोस्, वा अनलाइनै भरेर प्रिन्ट गर्नुहोस्।",
     en: "Find the form — view it, download it, or fill it in online and print it.",
